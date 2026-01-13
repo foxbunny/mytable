@@ -1,0 +1,29 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=mytable;Username=postgres;Password=postgres;Include Error Detail=true"
+  },
+  "NpgsqlRest": {
+    "ConnectionString": "Host=localhost;Port=5432;Database=mytable;Username=postgres;Password=postgres;Include Error Detail=true",
+    "RequiresAuthorization": false,
+    "UrlPathPrefix": "api",
+    "EndpointCreated": null,
+    "NameConverter": "CamelCase",
+    "CommentsMode": "ParseAll",
+    "DefaultHttpMethod": "POST",
+    "CommentHeaderName": "X-Comment",
+    "CommentParameterName": "comment",
+    "RequestHeadersParameterName": "headers",
+    "RequestHeadersMode": "Ignore",
+    "HttpMethodParameterName": null,
+    "CommentHeader": {
+      "Enabled": true,
+      "Format": "OnlyWithComment"
+    },
+    "LoggingOptions": {
+      "LogEndpoint": true,
+      "LogConnectionNoticeEvents": false,
+      "LogCommands": false,
+      "LogAnnotations": true
+    }
+  }
+}

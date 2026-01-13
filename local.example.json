@@ -1,0 +1,8 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=mytable;Username=YOUR_USERNAME;Include Error Detail=true"
+  },
+  "NpgsqlRest": {
+    "ConnectionString": "Host=localhost;Port=5432;Database=mytable;Username=YOUR_USERNAME;Include Error Detail=true"
+  }
+}
