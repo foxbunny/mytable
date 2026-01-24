@@ -1,0 +1,25 @@
+<div class="calendar">
+	<header>
+		<button type="button" class="icon" data-part="prev">
+			<x-icon name="chevron-left"></x-icon>
+			<span class="text-alt">Previous month</span>
+		</button>
+		<span data-part="month-year"></span>
+		<button type="button" class="icon" data-part="next">
+			<x-icon name="chevron-right"></x-icon>
+			<span class="text-alt">Next month</span>
+		</button>
+	</header>
+	<div class="calendar-head" data-part="weekdays">
+		<!-- Weekday labels populated by JS -->
+	</div>
+	<div class="calendar-body" data-part="days">
+		<!-- Days populated by JS -->
+	</div>
+	<footer>
+		<button type="button" data-part="today">
+			<x-icon name="calendar-today"></x-icon>
+			<span>Today</span>
+		</button>
+	</footer>
+</div>

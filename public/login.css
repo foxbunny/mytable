@@ -1,0 +1,44 @@
+#login {
+	width: 100%;
+	max-width: 24em;
+}
+
+form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--m);
+}
+
+label {
+	display: flex;
+	flex-direction: column;
+	gap: var(--xs);
+}
+
+/* Message visibility */
+#login .message {
+	display: none;
+}
+
+#login[data-state="error-credentials"] .message,
+#login[data-state="error-network"] .message {
+	display: block;
+}
+
+#login:not([data-state="error-credentials"]) .msg-credentials,
+#login:not([data-state="error-network"]) .msg-network {
+	display: none;
+}
+
+/* Button text states */
+#login .label-busy {
+	display: none;
+}
+
+#login[data-state="loading"] .label-idle {
+	display: none;
+}
+
+#login[data-state="loading"] .label-busy {
+	display: inline;
+}

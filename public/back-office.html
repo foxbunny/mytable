@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="common.css" media="screen">
+	<link rel="stylesheet" href="back-office.css" media="screen">
+
+	<script async src="back-office-check.js"></script>
+	<script type="module" src="back-office.js"></script>
+
+	<title>Back Office - MyTable</title>
+</head>
+<body class="app">
+	<header class="page-header">
+		<h1 data-part="page-title">MyTable</h1>
+		<span class="offline-indicator" data-part="offline-indicator">Server unavailable</span>
+	</header>
+
+	<template data-part="content">
+		<main>
+			<div id="main-content">
+				<!-- Floor View -->
+				<div id="floorplan-area" data-part="floorplan-area" data-mode="view">
+					<div id="floorplan-toolbar">
+						<button data-part="toolbar-block" disabled>
+							<x-icon name="block"></x-icon>
+							<span class="label-block">Block Table</span>
+							<span class="label-unblock">Unblock Table</span>
+						</button>
+					</div>
+					<div id="floor-tabs" data-part="floor-tabs">
+						<slot name="floor-tabs"></slot>
+					</div>
+					<div id="floorplan-canvas" data-part="floorplan-canvas">
+						<div class="floorplan-wrapper">
+							<img data-part="floorplan-image" alt="">
+							<div class="table-markers" data-part="table-markers">
+								<slot name="table-markers"></slot>
+							</div>
+						</div>
+					</div>
+					<p class="empty-state" data-part="no-floorplans" hidden>
+						No floorplans configured. Please add floorplans in the setup page.
+					</p>
+				</div>
+			</div>
+
+			<aside id="sidebar" data-part="sidebar" data-mode="list">
+				<!-- Calendar (always visible) -->
+				<div id="sidebar-calendar" data-part="calendar"></div>
+
+				<!-- Reservation List View -->
+				<div id="sidebar-list">
+					<header id="list-header">
+						<h2 class="lvl3">Reservations</h2>
+						<button class="icon" data-part="new-res-btn" data-with-tooltip>
+							<x-icon name="plus"></x-icon>
+							<span class="text-alt">New reservation</span>
+							<span data-tooltip>New reservation</span>
+						</button>
+					</header>
+					<ul class="reservation-list" data-part="reservation-list">
+						<slot name="reservation-list"></slot>
+					</ul>
+					<p class="empty-state" data-part="no-reservations" hidden>
+						No reservations for this date.
+					</p>
+				</div>
+
+				<!-- Reservation Detail View -->
+				<div id="sidebar-detail" data-part="sidebar-detail">
+					<header id="detail-header">
+						<button class="icon" data-action="back">
+							<x-icon name="arrow-left"></x-icon>
+							<span class="text-alt">Back</span>
+						</button>
+						<h2 class="lvl3">Review Reservation</h2>
+					</header>
+					<div id="detail-guest">
+						<p data-part="detail-guest-name">Guest Name</p>
+						<p data-part="detail-guest-contact">Contact</p>
+					</div>
+					<div id="detail-info">
+						<div class="detail-row">
+							<span class="detail-label">Date</span>
+							<span data-part="detail-date"></span>
+						</div>
+						<div class="detail-row">
+							<span class="detail-label">Time</span>
+							<span data-part="detail-time"></span>
+						</div>
+						<div class="detail-row">
+							<span class="detail-label">Party</span>
+							<span data-part="detail-party"></span>
+						</div>
+						<div class="detail-row">
+							<span class="detail-label">Duration</span>
+							<span data-part="detail-duration"></span>
+						</div>
+						<div class="detail-row">
+							<span class="detail-label">Tables</span>
+							<span data-part="detail-tables"></span>
+						</div>
+					</div>
+					<div id="detail-notes" data-part="detail-notes" hidden>
+						<h3 class="label">Notes</h3>
+						<p data-part="detail-notes-text"></p>
+					</div>
+					<p id="detail-status">Declined</p>
+					<div id="detail-actions">
+						<button class="accent" data-action="completed">Complete</button>
+						<button class="sub" data-action="no_show">No-show</button>
+						<button class="sub" data-action="cancelled">Cancel</button>
+					</div>
+				</div>
+
+				<!-- Booking Panel View -->
+				<div id="sidebar-booking" data-part="sidebar-booking">
+					<header id="booking-header">
+						<button class="icon" data-action="back">
+							<x-icon name="arrow-left"></x-icon>
+							<span class="text-alt">Back</span>
+						</button>
+						<h2 class="lvl3" id="booking-title-new">New Reservation</h2>
+						<h2 class="lvl3" id="booking-title-pending">Review Reservation</h2>
+					</header>
+					<div id="booking-guest-info" data-part="booking-guest-info">
+						<p data-part="booking-guest-name">Guest Name</p>
+						<p data-part="booking-guest-contact">Contact</p>
+					</div>
+					<div id="booking-params">
+						<label>
+							<span>Party</span>
+							<input type="number" data-part="booking-party" data-action="party" min="1" value="2">
+						</label>
+						<label>
+							<span>Date</span>
+							<input type="date" data-part="booking-date">
+						</label>
+						<label>
+							<span>Time</span>
+							<input type="time" data-part="booking-time" data-action="time">
+						</label>
+						<label>
+							<span>Duration</span>
+							<select data-part="booking-duration" data-action="duration">
+								<option value="30">30 min</option>
+								<option value="60">1 hr</option>
+								<option value="90" selected>1.5 hr</option>
+								<option value="120">2 hr</option>
+								<option value="150">2.5 hr</option>
+								<option value="180">3 hr</option>
+								<option value="210">3.5 hr</option>
+								<option value="240">4 hr</option>
+								<option value="270">4.5 hr</option>
+								<option value="300">5 hr</option>
+							</select>
+						</label>
+					</div>
+					<div id="booking-notes" data-part="booking-notes" hidden>
+						<h3 class="label">Notes</h3>
+						<p data-part="booking-notes-text"></p>
+					</div>
+					<div id="booking-selection">
+						<div id="booking-capacity-bar">
+							<div data-part="booking-capacity-fill"></div>
+						</div>
+						<p data-part="booking-msg-empty">Select tables on the floor</p>
+						<p data-part="booking-msg-selected" hidden>
+							<span>Table</span><span data-part="booking-table-suffix">s</span>
+							<span data-part="booking-table-names"></span>
+							<span> — </span>
+							<span data-part="booking-capacity-current"></span>/<span data-part="booking-capacity-needed"></span>
+							<span> seats</span>
+						</p>
+					</div>
+					<label id="booking-admin-message">
+						<span>Message to guest</span>
+						<textarea data-part="booking-admin-message" rows="2" placeholder="Optional message..."></textarea>
+					</label>
+					<div id="booking-actions">
+						<button class="decline" data-part="booking-decline" data-action="decline">Decline</button>
+						<button class="accent" data-part="booking-confirm" data-action="confirm">Confirm</button>
+					</div>
+				</div>
+			</aside>
+		</main>
+	</template>
+
+	<!-- Toast notifications -->
+	<ul id="toast-list" aria-live="polite"></ul>
+
+	<template data-part="toast-template">
+		<li class="toast" data-level="info">
+			<p data-part="toast-message"></p>
+			<button type="button" class="toast-dismiss" data-part="toast-dismiss">
+				<x-icon name="close"></x-icon>
+				<span class="text-alt">Dismiss</span>
+			</button>
+		</li>
+	</template>
+
+	<template data-part="new-res-toast-template">
+		<li class="toast" data-level="info">
+			<p>
+				<span>New reservation: </span>
+				<span data-part="toast-guest"></span>
+				<span>, </span>
+				<span data-part="toast-party"></span>
+				<span> guests</span>
+			</p>
+			<button type="button" class="toast-dismiss" data-part="toast-dismiss">
+				<x-icon name="close"></x-icon>
+				<span class="text-alt">Dismiss</span>
+			</button>
+		</li>
+	</template>
+
+	<!-- Reservation Dialog -->
+	<dialog id="reservation-dialog" data-part="reservation-dialog">
+		<header>
+			<h2 id="dialog-title">
+				<span class="title-new">New Reservation</span>
+				<span class="title-new-table">New Reservation – Table <span data-part="dialog-table-name"></span></span>
+				<span class="title-edit">Edit Reservation</span>
+			</h2>
+			<button class="close" data-action="close">
+				<x-icon name="close"></x-icon>
+				<span class="text-alt">Close</span>
+			</button>
+		</header>
+		<div>
+			<form id="reservation-form" data-part="reservation-form">
+				<label>
+					<span>Guest Name</span>
+					<input type="text" name="guestName" data-part="guest-name" required>
+				</label>
+
+				<div class="form-row">
+					<label>
+						<span>Phone</span>
+						<input type="tel" name="guestPhone" data-part="guest-phone">
+					</label>
+					<label>
+						<span>Email</span>
+						<input type="email" name="guestEmail" data-part="guest-email">
+					</label>
+				</div>
+
+				<div class="form-row">
+					<label>
+						<span>Party Size</span>
+						<input type="number" name="partySize" data-part="party-size" min="1" value="2" required>
+					</label>
+					<label>
+						<span>Duration (min)</span>
+						<input type="number" name="durationMinutes" data-part="duration" min="15" step="15" value="90" required>
+					</label>
+				</div>
+
+				<div class="form-row">
+					<label>
+						<span>Date</span>
+						<input type="date" name="reservationDate" data-part="res-date" required>
+					</label>
+					<label>
+						<span>Time</span>
+						<input type="time" name="reservationTime" data-part="res-time" required>
+					</label>
+				</div>
+
+				<label>
+					<span>Table</span>
+					<select name="tableId" data-part="table-select">
+						<option value="">No table assigned</option>
+						<!-- Options populated by JS, grouped by floor -->
+					</select>
+				</label>
+
+				<label>
+					<span>Source</span>
+					<select name="source" data-part="source-select">
+						<option value="phone">Phone</option>
+						<option value="walk_in">Walk-in</option>
+						<option value="online">Online</option>
+					</select>
+				</label>
+
+				<label>
+					<span>Notes</span>
+					<textarea name="notes" data-part="notes" rows="2"></textarea>
+				</label>
+
+				<p class="message" data-part="form-message">
+					<span class="msg-network">Network error</span>
+					<span class="msg-api" data-part="form-error-text"></span>
+				</p>
+			</form>
+		</div>
+		<footer>
+			<button type="button" class="sub" data-action="close">Cancel</button>
+			<button type="submit" form="reservation-form" data-part="dialog-submit">Save</button>
+		</footer>
+	</dialog>
+
+	<!-- New Reservation Guest Dialog -->
+	<dialog data-part="guest-dialog">
+		<header>
+			<h2>Guest Information</h2>
+			<button class="close" data-action="close">
+				<x-icon name="close"></x-icon>
+				<span class="text-alt">Close</span>
+			</button>
+		</header>
+		<div>
+			<form id="guest-form" data-part="guest-form">
+				<label>
+					<span>Guest Name</span>
+					<input type="text" name="guestName" data-part="guest-form-name" required>
+				</label>
+				<div class="form-row">
+					<label>
+						<span>Phone</span>
+						<input type="tel" name="guestPhone" data-part="guest-form-phone">
+					</label>
+					<label>
+						<span>Email</span>
+						<input type="email" name="guestEmail" data-part="guest-form-email">
+					</label>
+				</div>
+				<label>
+					<span>Notes</span>
+					<textarea name="notes" data-part="guest-form-notes" rows="2"></textarea>
+				</label>
+			</form>
+		</div>
+		<footer>
+			<button type="button" class="sub" data-action="close">Cancel</button>
+			<button type="submit" form="guest-form" data-part="guest-dialog-submit">Create</button>
+		</footer>
+	</dialog>
+
+	<!-- Item templates for slot rendering -->
+	<template data-name="reservation-list">
+		<li class="reservation-item" data-part="reservation-item">
+			<div class="res-row">
+				<span class="res-time">
+					<span class="res-urgent-dot"></span>
+					<span data-part="res-item-date" hidden></span>
+					<span data-part="res-item-time">18:00</span>
+					<span class="res-time-sep" data-part="res-item-sep">–</span>
+					<span data-part="res-item-end">19:30</span>
+				</span>
+				<span class="res-status" data-part="res-item-status">pending</span>
+			</div>
+			<div class="res-row">
+				<span class="res-party">
+					<x-icon name="users"></x-icon>
+					<span data-part="res-item-party">4</span>
+				</span>
+				<span class="res-guest" data-part="res-item-guest">John Doe</span>
+			</div>
+		</li>
+	</template>
+
+	<template data-name="table-markers">
+		<button class="table-marker" data-part="table-marker">
+			<span data-part="marker-name">1</span>
+		</button>
+	</template>
+
+	<template data-name="floor-tabs">
+		<button data-part="floor-tab">Floor Name</button>
+	</template>
+</body>
+</html>

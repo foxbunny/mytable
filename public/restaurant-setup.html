@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="common.css" media="screen">
+	<link rel="stylesheet" href="restaurant-setup.css" media="screen">
+
+	<script async src="restaurant-setup-check.js"></script>
+	<script type="module" src="restaurant-setup.js"></script>
+
+	<title>MyTable - Restaurant Setup</title>
+</head>
+<body class="page">
+	<header class="page-header">
+		<h1>MyTable Back Office</h1>
+	</header>
+
+	<main>
+		<template data-part="content">
+			<section id="restaurant-setup" class="section">
+				<h2 class="lvl1">Restaurant Setup</h2>
+				<p>Configure your restaurant details to get started.</p>
+
+				<form data-part="form">
+					<fieldset class="section">
+						<legend>Basic Information</legend>
+
+						<label>
+							<span>Restaurant Name</span>
+							<input type="text" name="name" data-part="name" required>
+						</label>
+
+						<label>
+							<span>Address</span>
+							<input type="text" name="address" data-part="address">
+						</label>
+
+						<label>
+							<span>Phone</span>
+							<input type="tel" name="phone" data-part="phone">
+						</label>
+					</fieldset>
+
+					<fieldset class="section" id="floorplans-section">
+						<legend>Floor Plans</legend>
+						<p>Add floor plans for your restaurant (e.g., Main Floor, Patio, Rooftop).</p>
+
+						<ul data-part="floorplan-list" class="floorplan-list"></ul>
+
+						<div class="add-floorplan" data-part="add-floorplan-form" hidden>
+							<label>
+								<span>Floor Plan Name</span>
+								<input type="text" data-part="floorplan-name">
+							</label>
+
+							<label>
+								<span>Image</span>
+								<input type="file" accept="image/*" data-part="floorplan-file">
+							</label>
+
+							<div class="floorplan-preview" data-part="floorplan-preview" hidden>
+								<img data-part="preview-image">
+								<span data-part="preview-dimensions"></span>
+							</div>
+
+							<div class="add-floorplan-actions">
+								<button type="button" class="sub" data-part="cancel-floorplan">Cancel</button>
+								<button type="button" data-part="save-floorplan" disabled>
+								<span class="label-idle">Save Floor Plan</span>
+								<span class="label-busy">Uploading...</span>
+							</button>
+							</div>
+						</div>
+
+						<button type="button" class="sub" data-part="add-floorplan-btn">Add Floor Plan</button>
+					</fieldset>
+
+					<fieldset class="section" id="working-hours-section">
+						<legend>Working Hours</legend>
+
+						<div class="day-row" data-day="monday">
+							<label class="day-checkbox">
+								<input type="checkbox" data-part="day-enabled">
+								<span>Monday</span>
+							</label>
+							<div class="day-times" data-part="day-times">
+								<label>
+									<span class="text-alt">Opens</span>
+									<input type="time" data-part="day-open" value="11:00">
+								</label>
+								<span>to</span>
+								<label>
+									<span class="text-alt">Closes</span>
+									<input type="time" data-part="day-close" value="22:00">
+								</label>
+							</div>
+						</div>
+
+						<div class="day-row" data-day="tuesday">
+							<label class="day-checkbox">
+								<input type="checkbox" data-part="day-enabled">
+								<span>Tuesday</span>
+							</label>
+							<div class="day-times" data-part="day-times">
+								<label>
+									<span class="text-alt">Opens</span>
+									<input type="time" data-part="day-open" value="11:00">
+								</label>
+								<span>to</span>
+								<label>
+									<span class="text-alt">Closes</span>
+									<input type="time" data-part="day-close" value="22:00">
+								</label>
+							</div>
+						</div>
+
+						<div class="day-row" data-day="wednesday">
+							<label class="day-checkbox">
+								<input type="checkbox" data-part="day-enabled">
+								<span>Wednesday</span>
+							</label>
+							<div class="day-times" data-part="day-times">
+								<label>
+									<span class="text-alt">Opens</span>
+									<input type="time" data-part="day-open" value="11:00">
+								</label>
+								<span>to</span>
+								<label>
+									<span class="text-alt">Closes</span>
+									<input type="time" data-part="day-close" value="22:00">
+								</label>
+							</div>
+						</div>
+
+						<div class="day-row" data-day="thursday">
+							<label class="day-checkbox">
+								<input type="checkbox" data-part="day-enabled">
+								<span>Thursday</span>
+							</label>
+							<div class="day-times" data-part="day-times">
+								<label>
+									<span class="text-alt">Opens</span>
+									<input type="time" data-part="day-open" value="11:00">
+								</label>
+								<span>to</span>
+								<label>
+									<span class="text-alt">Closes</span>
+									<input type="time" data-part="day-close" value="22:00">
+								</label>
+							</div>
+						</div>
+
+						<div class="day-row" data-day="friday">
+							<label class="day-checkbox">
+								<input type="checkbox" data-part="day-enabled">
+								<span>Friday</span>
+							</label>
+							<div class="day-times" data-part="day-times">
+								<label>
+									<span class="text-alt">Opens</span>
+									<input type="time" data-part="day-open" value="11:00">
+								</label>
+								<span>to</span>
+								<label>
+									<span class="text-alt">Closes</span>
+									<input type="time" data-part="day-close" value="23:00">
+								</label>
+							</div>
+						</div>
+
+						<div class="day-row" data-day="saturday">
+							<label class="day-checkbox">
+								<input type="checkbox" data-part="day-enabled">
+								<span>Saturday</span>
+							</label>
+							<div class="day-times" data-part="day-times">
+								<label>
+									<span class="text-alt">Opens</span>
+									<input type="time" data-part="day-open" value="12:00">
+								</label>
+								<span>to</span>
+								<label>
+									<span class="text-alt">Closes</span>
+									<input type="time" data-part="day-close" value="23:00">
+								</label>
+							</div>
+						</div>
+
+						<div class="day-row" data-day="sunday">
+							<label class="day-checkbox">
+								<input type="checkbox" data-part="day-enabled">
+								<span>Sunday</span>
+							</label>
+							<div class="day-times" data-part="day-times">
+								<label>
+									<span class="text-alt">Opens</span>
+									<input type="time" data-part="day-open" value="12:00">
+								</label>
+								<span>to</span>
+								<label>
+									<span class="text-alt">Closes</span>
+									<input type="time" data-part="day-close" value="21:00">
+								</label>
+							</div>
+						</div>
+					</fieldset>
+
+					<p class="message" data-part="message">
+						<span class="msg-api" data-part="msg-api-text"></span>
+						<span class="msg-network">An error occurred. Please try again.</span>
+						<span class="msg-success">Restaurant settings saved. Redirecting...</span>
+					</p>
+
+					<button type="submit" data-part="submit">
+						<span class="label-idle">Save Restaurant Settings</span>
+						<span class="label-busy">Saving...</span>
+					</button>
+				</form>
+			</section>
+		</template>
+
+		<template data-part="floorplan-item">
+			<li class="floorplan-item">
+				<img data-part="thumb">
+				<div class="floorplan-info">
+					<span data-part="fp-name"></span>
+					<span class="label" data-part="fp-dimensions"></span>
+				</div>
+				<button type="button" class="sub" data-part="edit-tables">Edit Tables</button>
+				<button type="button" class="destructive icon" data-part="delete-fp"><span class="text-alt">Delete</span><x-icon name="close"></x-icon></button>
+			</li>
+		</template>
+
+		<template data-part="table-editor-dialog">
+			<dialog class="table-editor-dialog">
+				<header>
+					<h2 data-part="dialog-title">Edit Tables – <span data-part="dialog-title-name"></span></h2>
+					<button type="button" class="close icon" data-action="close">
+						<x-icon name="close"></x-icon>
+						<span class="text-alt">Close</span>
+					</button>
+				</header>
+				<div class="table-editor">
+					<div class="table-editor-canvas" data-part="canvas">
+						<div class="table-editor-canvas-inner" data-part="canvas-inner">
+							<img data-part="floor-image">
+							<slot name="table-markers"></slot>
+						</div>
+					</div>
+					<aside class="table-editor-sidebar" data-part="sidebar">
+						<h3>Tables</h3>
+						<p class="hint" data-part="hint">Click on the floor plan to add a table.</p>
+						<div class="table-props" data-part="table-props" hidden>
+							<label>
+								<span>Name</span>
+								<input type="text" data-part="prop-name" data-action="update-table">
+							</label>
+							<label>
+								<span>Capacity</span>
+								<input type="number" min="1" max="20" data-part="prop-capacity" data-action="update-table">
+							</label>
+							<label>
+								<span>Notes</span>
+								<input type="text" data-part="prop-notes" data-action="update-table" placeholder="e.g., Near window">
+							</label>
+							<button type="button" class="destructive" data-action="delete-table">Delete Table</button>
+						</div>
+					</aside>
+				</div>
+			</dialog>
+		</template>
+
+		<template data-name="table-markers">
+			<button type="button" class="table-marker">
+				<span class="table-marker-label" data-part="marker-label"></span>
+			</button>
+		</template>
+
+		<p data-part="status">
+			<span data-part="status-loading">Loading...</span>
+			<span data-part="status-error" hidden>Failed to load restaurant data: <span data-part="status-error-detail"></span></span>
+		</p>
+	</main>
+
+	<ul id="toast-list" aria-live="polite"></ul>
+
+	<template data-part="toast-template">
+		<li class="toast" data-level="error">
+			<p data-part="toast-message"></p>
+			<button type="button" class="toast-dismiss" data-part="toast-dismiss">
+				<x-icon name="close"></x-icon>
+				<span class="text-alt">Dismiss</span>
+			</button>
+		</li>
+	</template>
+</body>
+</html>

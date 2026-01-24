@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="common.css" media="screen">
+	<link rel="stylesheet" href="design-system.css" media="screen">
+
+	<script type="module" src="common.js"></script>
+
+	<title>MyTable - Design System</title>
+</head>
+<body>
+	<header class="page-header">
+		<h1>Design System</h1>
+	</header>
+
+	<main>
+
+		<section id="colors" class="section">
+			<h2 class="lvl1">Colors</h2>
+			<p>This page background is primary. This section is secondary.</p>
+
+			<section class="section">
+				<h3 class="lvl2">Tertiary</h3>
+				<p>A section nested inside secondary.</p>
+
+				<section class="section">
+					<h4 class="lvl3">Quaternary</h4>
+					<p>A section nested inside tertiary.</p>
+				</section>
+			</section>
+
+			<section id="accent-demo" class="section">
+				<h3 class="lvl2">Accent &amp; Sub</h3>
+				<p>Used for interactive elements like buttons.</p>
+				<button type="button">Accent</button>
+				<button type="button" class="sub">Sub</button>
+			</section>
+		</section>
+
+		<section id="messages" class="section">
+			<h2 class="lvl1">Messages</h2>
+
+			<div class="messages-on-primary">
+				<h3 class="lvl2">On Primary</h3>
+				<p class="message">This is a normal message.</p>
+				<p class="message" data-error>This is an error message.</p>
+			</div>
+
+			<p class="message">This is a normal message on secondary.</p>
+			<p class="message" data-error>This is an error message on secondary.</p>
+
+			<section class="section">
+				<h3 class="lvl2">On Tertiary</h3>
+				<p class="message">This is a normal message.</p>
+				<p class="message" data-error>This is an error message.</p>
+
+				<section class="section">
+					<h4 class="lvl3">On Quaternary</h4>
+					<p class="message">This is a normal message.</p>
+					<p class="message" data-error>This is an error message.</p>
+				</section>
+			</section>
+		</section>
+
+		<section id="shadows" class="section">
+			<h2 class="lvl1">Shadows</h2>
+
+			<div class="shadow-demos">
+				<div class="shadow-demo" id="shadow-near">
+					<span>Near</span>
+				</div>
+				<div class="shadow-demo" id="shadow-mid">
+					<span>Mid</span>
+				</div>
+				<div class="shadow-demo" id="shadow-far">
+					<span>Far</span>
+				</div>
+			</div>
+		</section>
+
+		<section id="spacing" class="section">
+			<h2 class="lvl1">Spacing</h2>
+
+			<div class="lengths">
+				<div class="length" id="length-min"></div>
+				<div class="length" id="length-xs"></div>
+				<div class="length" id="length-s"></div>
+				<div class="length" id="length-m"></div>
+				<div class="length" id="length-l"></div>
+				<div class="length" id="length-xl"></div>
+				<div class="length" id="length-xxl"></div>
+				<span>--min</span>
+				<span>--xs</span>
+				<span>--s</span>
+				<span>--m</span>
+				<span>--l</span>
+				<span>--xl</span>
+				<span>--xxl</span>
+			</div>
+		</section>
+
+		<section id="tabs" class="section">
+			<h2 class="lvl1">Tabs</h2>
+
+			<div class="tabs">
+				<label>
+					<input type="radio" name="demo-tabs" checked>
+					<span>Tab One</span>
+				</label>
+				<label>
+					<input type="radio" name="demo-tabs">
+					<span>Tab Two</span>
+				</label>
+				<label>
+					<input type="radio" name="demo-tabs">
+					<span>Tab Three</span>
+				</label>
+			</div>
+
+			<h3 class="lvl3">With icons</h3>
+			<div class="tabs">
+				<label>
+					<input type="radio" name="demo-tabs-icons" checked>
+					<x-icon name="grid"></x-icon>
+					<span>Floor</span>
+				</label>
+				<label>
+					<input type="radio" name="demo-tabs-icons">
+					<x-icon name="list"></x-icon>
+					<span>Queue</span>
+				</label>
+			</div>
+		</section>
+
+		<section id="tooltips" class="section">
+			<h2 class="lvl1">Tooltips</h2>
+
+			<button data-with-tooltip>
+				<span>💾</span>
+				<span data-tooltip>Save</span>
+			</button>
+
+			<button data-with-tooltip>
+				<span>🗑️</span>
+				<span data-tooltip>Delete</span>
+			</button>
+		</section>
+
+		<section id="icons" class="section">
+			<h2 class="lvl1">Icons</h2>
+			<p>Icons scale with <code>--icon-scale</code> and maintain constant stroke width.</p>
+
+			<table class="icon-table">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>0.875x</th>
+						<th>1x</th>
+						<th>2x</th>
+						<th>3x</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>close</td>
+						<td><x-icon name="close"></x-icon></td>
+						<td><x-icon name="close"></x-icon></td>
+						<td><x-icon name="close"></x-icon></td>
+						<td><x-icon name="close"></x-icon></td>
+					</tr>
+					<tr>
+						<td>ok</td>
+						<td><x-icon name="ok"></x-icon></td>
+						<td><x-icon name="ok"></x-icon></td>
+						<td><x-icon name="ok"></x-icon></td>
+						<td><x-icon name="ok"></x-icon></td>
+					</tr>
+					<tr>
+						<td>save</td>
+						<td><x-icon name="save"></x-icon></td>
+						<td><x-icon name="save"></x-icon></td>
+						<td><x-icon name="save"></x-icon></td>
+						<td><x-icon name="save"></x-icon></td>
+					</tr>
+					<tr>
+						<td>delete</td>
+						<td><x-icon name="delete"></x-icon></td>
+						<td><x-icon name="delete"></x-icon></td>
+						<td><x-icon name="delete"></x-icon></td>
+						<td><x-icon name="delete"></x-icon></td>
+					</tr>
+					<tr>
+						<td>help</td>
+						<td><x-icon name="help"></x-icon></td>
+						<td><x-icon name="help"></x-icon></td>
+						<td><x-icon name="help"></x-icon></td>
+						<td><x-icon name="help"></x-icon></td>
+					</tr>
+					<tr>
+						<td>info</td>
+						<td><x-icon name="info"></x-icon></td>
+						<td><x-icon name="info"></x-icon></td>
+						<td><x-icon name="info"></x-icon></td>
+						<td><x-icon name="info"></x-icon></td>
+					</tr>
+					<tr>
+						<td>chevron-up</td>
+						<td><x-icon name="chevron-up"></x-icon></td>
+						<td><x-icon name="chevron-up"></x-icon></td>
+						<td><x-icon name="chevron-up"></x-icon></td>
+						<td><x-icon name="chevron-up"></x-icon></td>
+					</tr>
+					<tr>
+						<td>triangle-up</td>
+						<td><x-icon name="triangle-up"></x-icon></td>
+						<td><x-icon name="triangle-up"></x-icon></td>
+						<td><x-icon name="triangle-up"></x-icon></td>
+						<td><x-icon name="triangle-up"></x-icon></td>
+					</tr>
+					<tr>
+						<td>spinner</td>
+						<td><x-icon name="spinner"></x-icon></td>
+						<td><x-icon name="spinner"></x-icon></td>
+						<td><x-icon name="spinner"></x-icon></td>
+						<td><x-icon name="spinner"></x-icon></td>
+					</tr>
+					<tr>
+						<td>chevron-left</td>
+						<td><x-icon name="chevron-left"></x-icon></td>
+						<td><x-icon name="chevron-left"></x-icon></td>
+						<td><x-icon name="chevron-left"></x-icon></td>
+						<td><x-icon name="chevron-left"></x-icon></td>
+					</tr>
+					<tr>
+						<td>chevron-right</td>
+						<td><x-icon name="chevron-right"></x-icon></td>
+						<td><x-icon name="chevron-right"></x-icon></td>
+						<td><x-icon name="chevron-right"></x-icon></td>
+						<td><x-icon name="chevron-right"></x-icon></td>
+					</tr>
+					<tr>
+						<td>arrow-left</td>
+						<td><x-icon name="arrow-left"></x-icon></td>
+						<td><x-icon name="arrow-left"></x-icon></td>
+						<td><x-icon name="arrow-left"></x-icon></td>
+						<td><x-icon name="arrow-left"></x-icon></td>
+					</tr>
+					<tr>
+						<td>plus</td>
+						<td><x-icon name="plus"></x-icon></td>
+						<td><x-icon name="plus"></x-icon></td>
+						<td><x-icon name="plus"></x-icon></td>
+						<td><x-icon name="plus"></x-icon></td>
+					</tr>
+					<tr>
+						<td>grid</td>
+						<td><x-icon name="grid"></x-icon></td>
+						<td><x-icon name="grid"></x-icon></td>
+						<td><x-icon name="grid"></x-icon></td>
+						<td><x-icon name="grid"></x-icon></td>
+					</tr>
+					<tr>
+						<td>list</td>
+						<td><x-icon name="list"></x-icon></td>
+						<td><x-icon name="list"></x-icon></td>
+						<td><x-icon name="list"></x-icon></td>
+						<td><x-icon name="list"></x-icon></td>
+					</tr>
+					<tr>
+						<td>edit</td>
+						<td><x-icon name="edit"></x-icon></td>
+						<td><x-icon name="edit"></x-icon></td>
+						<td><x-icon name="edit"></x-icon></td>
+						<td><x-icon name="edit"></x-icon></td>
+					</tr>
+					<tr>
+						<td>users</td>
+						<td><x-icon name="users"></x-icon></td>
+						<td><x-icon name="users"></x-icon></td>
+						<td><x-icon name="users"></x-icon></td>
+						<td><x-icon name="users"></x-icon></td>
+					</tr>
+					<tr>
+						<td>clock</td>
+						<td><x-icon name="clock"></x-icon></td>
+						<td><x-icon name="clock"></x-icon></td>
+						<td><x-icon name="clock"></x-icon></td>
+						<td><x-icon name="clock"></x-icon></td>
+					</tr>
+					<tr>
+						<td>phone</td>
+						<td><x-icon name="phone"></x-icon></td>
+						<td><x-icon name="phone"></x-icon></td>
+						<td><x-icon name="phone"></x-icon></td>
+						<td><x-icon name="phone"></x-icon></td>
+					</tr>
+					<tr>
+						<td>block</td>
+						<td><x-icon name="block"></x-icon></td>
+						<td><x-icon name="block"></x-icon></td>
+						<td><x-icon name="block"></x-icon></td>
+						<td><x-icon name="block"></x-icon></td>
+					</tr>
+					<tr>
+						<td>calendar</td>
+						<td><x-icon name="calendar"></x-icon></td>
+						<td><x-icon name="calendar"></x-icon></td>
+						<td><x-icon name="calendar"></x-icon></td>
+						<td><x-icon name="calendar"></x-icon></td>
+					</tr>
+					<tr>
+						<td>calendar-today</td>
+						<td><x-icon name="calendar-today"></x-icon></td>
+						<td><x-icon name="calendar-today"></x-icon></td>
+						<td><x-icon name="calendar-today"></x-icon></td>
+						<td><x-icon name="calendar-today"></x-icon></td>
+					</tr>
+				</tbody>
+			</table>
+		</section>
+
+		<section id="forms" class="section">
+			<h2 class="lvl1">Form Elements</h2>
+
+			<form>
+				<label>
+					<span>Text input</span>
+					<input type="text" placeholder="Placeholder text">
+				</label>
+
+				<label>
+					<span>Password input</span>
+					<input type="password" value="password">
+				</label>
+
+				<label>
+					<span>Disabled input</span>
+					<input type="text" value="Cannot edit" disabled>
+				</label>
+
+				<label>
+					<input type="checkbox">
+					<span>Checkbox unchecked</span>
+				</label>
+
+				<label>
+					<input type="checkbox" checked>
+					<span>Checkbox checked</span>
+				</label>
+
+				<label>
+					<input type="checkbox" disabled>
+					<span>Checkbox disabled</span>
+				</label>
+
+				<label>
+					<input type="checkbox" checked disabled>
+					<span>Checkbox checked disabled</span>
+				</label>
+
+				<div class="buttons">
+					<button type="button">Primary</button>
+					<button type="button" disabled>Disabled</button>
+					<button type="button" class="sub">Secondary</button>
+					<button type="button" class="sub" disabled>Disabled</button>
+					<button type="button" class="destructive">Delete</button>
+					<button type="button" class="destructive" disabled>Disabled</button>
+				</div>
+			</form>
+		</section>
+
+		<section id="fieldsets" class="section">
+			<h2 class="lvl1">Fieldsets</h2>
+
+			<form>
+				<fieldset>
+					<legend>Account Details</legend>
+
+					<label>
+						<span>Username</span>
+						<input type="text" placeholder="Enter username">
+					</label>
+
+					<label>
+						<span>Email</span>
+						<input type="text" placeholder="Enter email">
+					</label>
+				</fieldset>
+
+				<fieldset>
+					<legend>Security</legend>
+
+					<label>
+						<span>Password</span>
+						<input type="password" placeholder="Enter password">
+					</label>
+
+					<label>
+						<span>Confirm password</span>
+						<input type="password" placeholder="Confirm password">
+					</label>
+				</fieldset>
+			</form>
+		</section>
+
+		<section id="dialogs" class="section">
+			<h2 class="lvl1">Dialogs</h2>
+
+			<button type="button" onclick="document.getElementById('demo-dialog').showModal()">Open Dialog</button>
+
+			<dialog id="demo-dialog">
+				<header>
+					<h2>Dialog Title</h2>
+					<button type="button" class="close icon" data-part="close" onclick="this.closest('dialog').close()"><x-icon name="close"></x-icon><span class="text-alt">Close</span></button>
+				</header>
+				<div>
+					<p>This is a modal dialog. Click the X or press Escape to close it.</p>
+					<p>Dialogs are useful for focused interactions like editing items, confirmations, or displaying detailed information without navigating away from the current page.</p>
+				</div>
+				<footer>
+					<button type="button" class="sub" onclick="this.closest('dialog').close()">Cancel</button>
+					<button type="button" onclick="this.closest('dialog').close()">Confirm</button>
+				</footer>
+			</dialog>
+		</section>
+	</main>
+</body>
+</html>

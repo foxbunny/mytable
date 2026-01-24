@@ -1,0 +1,46 @@
+#setup {
+	width: 100%;
+	max-width: 24em;
+}
+
+form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--m);
+}
+
+label {
+	display: flex;
+	flex-direction: column;
+	gap: var(--xs);
+}
+
+/* Message visibility */
+#setup .message {
+	display: none;
+}
+
+#setup[data-state="error-api"] .message,
+#setup[data-state="error-network"] .message,
+#setup[data-state="success"] .message {
+	display: block;
+}
+
+#setup:not([data-state="error-api"]) .msg-api,
+#setup:not([data-state="error-network"]) .msg-network,
+#setup:not([data-state="success"]) .msg-success {
+	display: none;
+}
+
+/* Button text states */
+#setup .label-busy {
+	display: none;
+}
+
+#setup[data-state="loading"] .label-idle {
+	display: none;
+}
+
+#setup[data-state="loading"] .label-busy {
+	display: inline;
+}

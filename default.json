@@ -1,8 +1,29 @@
 {
+  "Auth": {
+    "CookieAuth": true,
+    "CookieValidDays": 14,
+    "CookieHttpOnly": true
+  },
+  "StaticFiles": {
+    "Enabled": true,
+    "RootPath": "public"
+  },
   "ConnectionStrings": {
     "DefaultConnection": "Host=localhost;Port=5432;Database=mytable;Username=postgres;Password=postgres;Include Error Detail=true"
   },
   "NpgsqlRest": {
+    "UploadOptions": {
+      "Enabled": true,
+      "DefaultUploadHandler": "file_system",
+      "UseDefaultUploadMetadataParameter": true,
+      "DefaultUploadMetadataParameterName": "_meta",
+      "UploadHandlers": {
+        "FileSystemEnabled": true,
+        "FileSystemPath": "public/uploads",
+        "FileSystemUseUniqueFileName": true,
+        "FileSystemCreatePathIfNotExists": true
+      }
+    },
     "ConnectionString": "Host=localhost;Port=5432;Database=mytable;Username=postgres;Password=postgres;Include Error Detail=true",
     "RequiresAuthorization": false,
     "UrlPathPrefix": "api",
@@ -21,9 +42,12 @@
     },
     "LoggingOptions": {
       "LogEndpoint": true,
-      "LogConnectionNoticeEvents": false,
+      "LogConnectionNoticeEvents": true,
       "LogCommands": false,
       "LogAnnotations": true
+    },
+    "ClientCodeGen": {
+      "Enabled": false
     }
   }
 }

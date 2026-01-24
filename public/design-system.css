@@ -1,0 +1,100 @@
+body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--l);
+	background: var(--c-primary-bg);
+	color: var(--c-primary-fg);
+	font-family: 'Fira Sans', system-ui, sans-serif;
+	padding: var(--l);
+	margin: 0;
+}
+
+main {
+	max-width: 48em;
+}
+
+main > .section {
+	padding: var(--l);
+	margin-bottom: var(--l);
+	border-radius: var(--r-l);
+}
+
+main .section .section {
+	margin-bottom: var(--m);
+}
+
+h2, h3, h4 {
+	margin: 0 0 var(--s);
+}
+
+.lengths {
+	display: grid;
+	grid-template-columns: repeat(7, auto);
+	grid-template-rows: var(--xxl) auto;
+	align-items: end;
+	justify-items: center;
+	gap: var(--s) var(--m);
+}
+
+.lengths span {
+	font-size: 0.75em;
+	color: var(--c-primary-fg);
+}
+
+.length {
+	background: var(--c-accent-bg);
+	border-radius: var(--r-s);
+}
+
+#length-min { width: var(--min); height: var(--min); }
+#length-xs { width: var(--xs); height: var(--xs); }
+#length-s { width: var(--s); height: var(--s); }
+#length-m { width: var(--m); height: var(--m); }
+#length-l { width: var(--l); height: var(--l); }
+#length-xl { width: var(--xl); height: var(--xl); }
+#length-xxl { width: var(--xxl); height: var(--xxl); }
+
+.messages-on-primary {
+	background: var(--c-primary-bg);
+	color: var(--c-primary-fg);
+	padding: var(--m);
+	margin-bottom: var(--m);
+	border-radius: var(--r-m);
+}
+
+.shadow-demos {
+	display: flex;
+	gap: var(--l);
+	flex-wrap: wrap;
+}
+
+.shadow-demo {
+	width: 8em;
+	height: 5em;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--c-secondary-bg);
+	border-radius: var(--r-m);
+}
+
+#shadow-near { box-shadow: var(--shadow-near); }
+#shadow-mid { box-shadow: var(--shadow-mid); }
+#shadow-far { box-shadow: var(--shadow-far); }
+
+.icon-table th,
+.icon-table td {
+	text-align: center;
+}
+
+.icon-table td:first-child,
+.icon-table th:first-child {
+	text-align: left;
+	font-family: monospace;
+	font-size: 0.875em;
+}
+
+.icon-table :nth-child(2) { --icon-scale: 0.875; }
+.icon-table :nth-child(3) { --icon-scale: 1; }
+.icon-table :nth-child(4) { --icon-scale: 2; }
+.icon-table :nth-child(5) { --icon-scale: 3; }

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="common.css" media="screen">
+	<script type="module" src="reorder-bench.js"></script>
+	<title>Reorder Benchmark</title>
+	<style>
+		body { font-family: monospace; padding: 2em; }
+		table { border-collapse: collapse; margin: 1em 0; }
+		th, td { border: 1px solid #ccc; padding: 0.4em 0.8em; text-align: right; }
+		th { background: #f5f5f5; text-align: left; }
+		.winner { font-weight: bold; }
+	</style>
+</head>
+<body>
+	<h1>Reorder: Cursor vs LIS</h1>
+	<p id="status">Running...</p>
+	<div id="results"></div>
+
+	<template data-part="bench-content">
+		<section>
+			<ul><slot name="bench-list"></slot></ul>
+		</section>
+	</template>
+
+	<template data-name="bench-list">
+		<li>
+			<span data-part="name"></span> —
+			<span data-part="time"></span> —
+			<span data-part="guests"></span>
+		</li>
+	</template>
+</body>
+</html>

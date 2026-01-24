@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="common.css" media="screen">
+	<link rel="stylesheet" href="setup.css" media="screen">
+
+	<script async src="setup-check.js"></script>
+	<script type="module" src="setup.js"></script>
+
+	<title>MyTable - Initial Setup</title>
+</head>
+<body class="page">
+	<header class="page-header">
+		<h1>MyTable Back Office</h1>
+	</header>
+
+	<main>
+		<template data-part="content">
+			<section id="setup" class="section">
+				<h2 class="lvl1">Welcome to MyTable</h2>
+				<p>Create your administrator account to get started.</p>
+
+				<form data-part="form">
+					<label>
+						<span>Username</span>
+						<input type="text" name="username" data-part="username" required autocomplete="username">
+					</label>
+
+					<label>
+						<span>Password</span>
+						<input type="password" name="password" data-part="password" required autocomplete="new-password" minlength="8">
+					</label>
+
+					<label>
+						<span>Confirm Password</span>
+						<input type="password" name="confirm" data-part="confirm" required autocomplete="new-password" minlength="8">
+					</label>
+
+					<p class="message" data-part="message">
+						<span class="msg-api" data-part="msg-api-text"></span>
+						<span class="msg-network">An error occurred. Please try again.</span>
+						<span class="msg-success">Admin account created. Redirecting...</span>
+					</p>
+
+					<button type="submit" data-part="submit">
+						<span class="label-idle">Create Admin Account</span>
+						<span class="label-busy">Creating...</span>
+					</button>
+				</form>
+			</section>
+		</template>
+
+		<p data-part="status">
+			<span data-part="status-loading">Loading...</span>
+			<span data-part="status-error" hidden>Failed to check setup status.</span>
+		</p>
+	</main>
+</body>
+</html>

@@ -1,0 +1,793 @@
+/* Back Office Layout */
+
+body.app > main {
+	padding: 0;
+}
+
+/* Offline indicator */
+.offline-indicator {
+	display: none;
+	font-size: var(--label);
+	padding: var(--xs) var(--s);
+	background: var(--c-error-bg);
+	color: var(--c-error-fg);
+	border-radius: 100vw;
+}
+
+body[data-offline] .offline-indicator {
+	display: inline-block;
+}
+
+/* Main Layout */
+
+main {
+	--main-direction: row;
+}
+
+#main-content {
+	flex: 1;
+	display: flex;
+	min-width: 0;
+}
+
+/* Floorplan Area */
+
+#floorplan-area {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+#floor-tabs {
+	display: flex;
+	justify-content: center;
+	gap: var(--xs);
+	padding: var(--s) var(--m);
+	overflow-x: auto;
+}
+
+#floor-tabs button {
+	padding: var(--xs) var(--m);
+	background: transparent;
+	color: var(--c-tertiary-fg);
+	border-radius: var(--r-s);
+	white-space: nowrap;
+}
+
+#floor-tabs button[data-active] {
+	background: var(--c-secondary-bg);
+	color: var(--c-secondary-fg);
+	box-shadow: var(--shadow-near);
+}
+
+#floor-tabs button:hover:not([data-active]):not(:disabled) {
+	background: var(--c-quaternary-bg);
+}
+
+#floorplan-toolbar {
+	display: flex;
+	gap: var(--s);
+	min-height: calc(var(--input-size) + 2 * var(--s) + var(--min));
+	padding: var(--s) var(--m);
+	background: var(--c-secondary-bg);
+	border-bottom: var(--min) solid var(--c-tertiary-bg);
+}
+
+/* Block/Unblock label visibility */
+#floorplan-toolbar button:not([data-blocked]) .label-unblock,
+#floorplan-toolbar button[data-blocked] .label-block {
+	display: none;
+}
+
+#floorplan-toolbar button:not([hidden]) {
+	display: flex;
+	align-items: center;
+	gap: var(--xs);
+	padding: var(--xs) var(--m);
+	background: var(--c-tertiary-bg);
+	color: var(--c-tertiary-fg);
+}
+
+
+#floorplan-toolbar button:not(:disabled):hover {
+	background: var(--c-quaternary-bg);
+}
+
+#floorplan-canvas {
+	flex: 1;
+	overflow: hidden;
+	padding: var(--m);
+}
+
+.floorplan-wrapper {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.floorplan-wrapper img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+#floorplan-canvas:has(img[src=""]) .floorplan-wrapper,
+#floorplan-canvas:has(img:not([src])) .floorplan-wrapper {
+	display: none;
+}
+
+.table-markers {
+	position: absolute;
+	left: calc(var(--x) * 1px);
+	top: calc(var(--y) * 1px);
+	width: calc(var(--w) * 1px);
+	height: calc(var(--h) * 1px);
+	pointer-events: none;
+}
+
+/* Table Markers */
+
+.table-marker {
+	--marker-bg: var(--c-accent-bg);
+	--marker-fg: var(--c-accent-fg);
+
+	position: absolute;
+	left: calc(var(--x) * 1%);
+	top: calc(var(--y) * 1%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.5em;
+	height: 2.5em;
+	margin: -1.25em 0 0 -1.25em;
+	padding: 0;
+	background: var(--marker-bg);
+	color: var(--marker-fg);
+	border: calc(2 * var(--min)) solid var(--marker-fg);
+	border-radius: 50%;
+	font-weight: 700;
+	font-size: 0.875em;
+	cursor: pointer;
+	pointer-events: auto;
+	box-shadow: var(--shadow-near);
+}
+
+.table-marker:hover {
+	transform: scale(1.1);
+	box-shadow: var(--shadow-mid);
+}
+
+.table-marker[data-blocked] {
+	--marker-bg: var(--c-sub-bg);
+	--marker-fg: var(--c-sub-fg);
+}
+
+.table-marker[data-occupied] {
+	--marker-bg: var(--c-quaternary-bg);
+	--marker-fg: var(--c-quaternary-fg);
+}
+
+.table-marker[data-selected] {
+	outline: 0.25em solid var(--c-focus);
+	outline-offset: 0.125em;
+}
+
+.table-marker[data-highlighted] {
+	animation: pulse-marker 0.6s ease-in-out infinite alternate;
+	box-shadow: 0 0 1em 0.5em #f0c020;
+}
+
+@keyframes pulse-marker {
+	from {
+		transform: scale(1);
+	}
+	to {
+		transform: scale(1.2);
+	}
+}
+
+/* Sidebar */
+
+#sidebar {
+	width: 20em;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--c-secondary-bg);
+	border-left: var(--min) solid var(--c-tertiary-bg);
+	overflow: hidden;
+}
+
+#sidebar-calendar {
+	padding: var(--m);
+	border-bottom: var(--min) solid var(--c-tertiary-bg);
+	flex-shrink: 0;
+}
+
+#sidebar-calendar[data-disabled] {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+
+.reservation-list {
+	overflow-y: auto;
+	list-style: none;
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+}
+
+.reservation-item {
+	display: grid;
+	grid-template-columns: subgrid;
+	grid-column: 1 / -1;
+	row-gap: var(--xs);
+	column-gap: var(--s);
+	padding: var(--s) var(--m);
+	border-bottom: var(--min) solid var(--c-tertiary-bg);
+	cursor: pointer;
+}
+
+.reservation-item:hover {
+	background: var(--c-tertiary-bg);
+}
+
+.res-row {
+	display: contents;
+}
+
+.res-time {
+	grid-column: 1 / 3;
+	display: flex;
+	align-items: center;
+	gap: var(--xs);
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.res-status {
+	grid-column: 3;
+}
+
+.res-time-sep {
+	opacity: 0.5;
+}
+
+.res-urgent-dot {
+	width: 0.5em;
+	height: 0.5em;
+	border-radius: 50%;
+	background: #e53935;
+}
+
+.reservation-item:not([data-urgent]) .res-urgent-dot {
+	display: none;
+}
+
+.res-time [data-part="res-item-date"]:not([hidden]) {
+	margin-right: var(--xs);
+}
+
+.res-party {
+	grid-column: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--xs);
+	color: var(--c-primary-fg);
+}
+
+.res-guest {
+	grid-column: 2 / 4;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.res-status {
+	padding: var(--xs) var(--s);
+	border-radius: var(--r-s);
+	font-size: 0.75em;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.res-status[data-status="pending"] {
+	background: var(--c-sub-bg);
+	color: var(--c-sub-fg);
+}
+
+.res-status[data-status="confirmed"] {
+	background: var(--c-accent-bg);
+	color: var(--c-accent-fg);
+}
+
+.res-status[data-status="declined"],
+.res-status[data-status="cancelled"],
+.res-status[data-status="no_show"] {
+	background: var(--c-error-bg);
+	color: var(--c-error-fg);
+}
+
+.res-status[data-status="completed"] {
+	background: var(--c-quaternary-bg);
+	color: var(--c-quaternary-fg);
+}
+
+/* Empty States */
+
+.empty-state {
+	padding: var(--l);
+	text-align: center;
+	color: var(--c-primary-fg);
+}
+
+#floorplan-area .empty-state:not([hidden]) {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#sidebar .empty-state {
+	padding: var(--m);
+}
+
+/* Reservation Dialog */
+
+.form-row {
+	display: flex;
+	gap: var(--m);
+}
+
+.form-row > label {
+	flex: 1;
+}
+
+
+/* Reservation Dialog Title States */
+#reservation-dialog:not([data-mode="new"]) .title-new,
+#reservation-dialog:not([data-mode="new-table"]) .title-new-table,
+#reservation-dialog:not([data-mode="edit"]) .title-edit {
+	display: none;
+}
+
+/* Form Message States */
+#reservation-dialog .message {
+	display: none;
+}
+
+#reservation-dialog[data-msg="network"] .message,
+#reservation-dialog[data-msg="api"] .message {
+	display: block;
+}
+
+#reservation-dialog:not([data-msg="network"]) .msg-network,
+#reservation-dialog:not([data-msg="api"]) .msg-api {
+	display: none;
+}
+
+/* Sidebar Mode Switching */
+
+#sidebar:not([data-mode="list"]) #sidebar-list,
+#sidebar:not([data-mode="detail"]) #sidebar-detail,
+#sidebar:not([data-mode="booking"]) #sidebar-booking {
+	display: none;
+}
+
+#sidebar-booking:not([data-booking-mode="new"]) #booking-title-new,
+#sidebar-booking:not([data-booking-mode="pending"]) #booking-title-pending {
+	display: none;
+}
+
+#sidebar-list {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+#sidebar-detail,
+#sidebar-booking {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	gap: var(--m);
+	padding: var(--m);
+	overflow-y: auto;
+}
+
+/* Sidebar Headers */
+
+#list-header,
+#detail-header,
+#booking-header {
+	display: flex;
+	align-items: center;
+	gap: var(--s);
+	padding: var(--s) var(--m);
+	background: var(--c-tertiary-bg);
+}
+
+#detail-header,
+#booking-header {
+	margin: calc(-1 * var(--m));
+	margin-bottom: 0;
+}
+
+#list-header {
+	justify-content: space-between;
+}
+
+#list-header button,
+#detail-header button,
+#booking-header button {
+	padding: var(--xs);
+	background: transparent;
+	color: var(--c-tertiary-fg);
+}
+
+#list-header button:hover,
+#detail-header button:hover,
+#booking-header button:hover {
+	background: var(--c-quaternary-bg);
+}
+
+#list-header h2,
+#detail-header h2,
+#booking-header h2 {
+	padding: 0;
+	border: none;
+}
+
+/* Detail/Booking Guest Info */
+
+#detail-guest,
+#booking-guest-info {
+	display: flex;
+	flex-direction: column;
+	gap: var(--xs);
+	padding: var(--s);
+	background: var(--c-tertiary-bg);
+	border-radius: var(--r-s);
+}
+
+#detail-guest p,
+#booking-guest-info p {
+	margin: 0;
+}
+
+#detail-guest p:first-of-type,
+#booking-guest-info p:first-of-type {
+	font-weight: 700;
+}
+
+#detail-guest p:last-of-type,
+#booking-guest-info p:last-of-type {
+	color: var(--c-primary-fg);
+}
+
+/* Detail Info */
+
+#detail-info {
+	display: flex;
+	flex-direction: column;
+	gap: var(--xs);
+	padding: var(--s);
+	background: var(--c-tertiary-bg);
+	border-radius: var(--r-s);
+}
+
+.detail-row {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--m);
+}
+
+.detail-label {
+	color: var(--c-primary-fg);
+}
+
+/* Detail/Booking Notes */
+
+#detail-notes,
+#booking-notes {
+	padding: var(--s);
+	background: var(--c-tertiary-bg);
+	border-radius: var(--r-s);
+}
+
+#detail-notes h3,
+#booking-notes h3 {
+	margin: 0 0 var(--xs);
+	color: var(--c-primary-fg);
+}
+
+#detail-notes p,
+#booking-notes p {
+	margin: 0;
+}
+
+/* Detail Status (for declined reservations) */
+
+#detail-status {
+	align-self: flex-start;
+	padding: var(--xs) var(--s);
+	background: var(--c-error-bg);
+	color: var(--c-error-fg);
+	font-size: 0.75em;
+	font-weight: 700;
+	text-transform: uppercase;
+	border-radius: var(--r-s);
+}
+
+#sidebar-detail:not([data-status="declined"]) #detail-status {
+	display: none;
+}
+
+#sidebar-detail[data-status="declined"] #detail-actions {
+	display: none;
+}
+
+/* Detail Actions */
+
+#detail-actions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s);
+}
+
+#detail-actions button {
+	justify-content: center;
+}
+
+#booking-params {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s);
+}
+
+#booking-params label {
+	display: flex;
+	flex-direction: column;
+	gap: var(--xs);
+	flex: 1;
+	min-width: 6em;
+}
+
+#booking-params label span {
+	font-size: 0.75em;
+	font-weight: 700;
+	text-transform: uppercase;
+	color: var(--c-primary-fg);
+}
+
+#booking-params input,
+#booking-params select {
+	padding: var(--xs) var(--s);
+}
+
+#booking-params input:read-only {
+	background: var(--c-tertiary-bg);
+	color: var(--c-primary-fg);
+	cursor: not-allowed;
+}
+
+#booking-selection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--xs);
+	padding: var(--s);
+	background: var(--c-tertiary-bg);
+	border-radius: var(--r-s);
+}
+
+#booking-selection p {
+	margin: 0;
+	text-align: center;
+}
+
+#booking-capacity-bar {
+	height: 0.5em;
+	background: var(--c-quaternary-bg);
+	border-radius: 100vw;
+	overflow: hidden;
+}
+
+#booking-capacity-bar > div {
+	height: 100%;
+	width: calc(var(--progress, 0) * 1%);
+	background: var(--c-sub-bg);
+	border-radius: 100vw;
+	transition: width 0.2s ease, background 0.2s ease;
+}
+
+#booking-capacity-bar[data-sufficient] > div {
+	background: var(--c-accent-bg);
+}
+
+#booking-capacity-bar[data-over] > div {
+	background: var(--c-accent-bg);
+}
+
+#booking-actions {
+	display: flex;
+	gap: var(--s);
+	justify-content: flex-end;
+}
+
+#booking-actions button {
+	padding: var(--s) var(--m);
+}
+
+#booking-actions button.decline {
+	--button-bg: var(--c-error-bg);
+	--button-fg: var(--c-error-fg);
+}
+
+#booking-actions button.accent {
+	--button-bg: var(--c-accent-bg);
+	--button-fg: var(--c-accent-fg);
+}
+
+/* Booking mode table markers */
+
+.table-marker[data-unavailable] {
+	--marker-bg: var(--c-quaternary-bg);
+	--marker-fg: var(--c-quaternary-fg);
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.table-marker[data-booking-selected] {
+	--marker-bg: var(--c-accent-bg);
+	--marker-fg: var(--c-accent-fg);
+	outline: 0.25em solid var(--c-focus);
+	outline-offset: 0.125em;
+}
+
+.table-marker[data-booking-selected][data-unavailable] {
+	outline-color: var(--c-sub-bg);
+}
+
+/* Admin message in booking */
+
+#booking-admin-message {
+	margin-top: auto;
+}
+
+#booking-admin-message span {
+	font-size: var(--label);
+	font-weight: 700;
+	text-transform: uppercase;
+	color: var(--c-primary-fg);
+}
+
+#booking-admin-message textarea {
+	resize: none;
+}
+
+/* Toast notifications */
+
+#toast-list {
+	position: fixed;
+	top: var(--m);
+	right: var(--m);
+	width: min(24em, calc(100% - 2 * var(--m)));
+	z-index: 1000;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var(--s);
+}
+
+.toast {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: var(--s);
+	padding: var(--m);
+	background: var(--c-secondary-bg);
+	border-radius: var(--r-m);
+	box-shadow: var(--shadow-mid);
+	animation: fly-in 0.3s ease-out forwards;
+	overflow: hidden;
+}
+
+.toast::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 0.25em;
+	background: var(--c-accent-bg);
+	animation: expire 10s linear forwards;
+}
+
+.toast:hover::after {
+	animation-play-state: paused;
+}
+
+.toast[data-clear] {
+	animation: fly-out 0.3s ease-in forwards;
+}
+
+.toast[data-level="info"]::after {
+	background: var(--c-accent-bg);
+}
+
+.toast[data-level="warning"]::after {
+	background: var(--c-sub-bg);
+}
+
+.toast[data-level="error"]::after {
+	background: var(--c-error-bg);
+}
+
+.toast p {
+	flex: 1;
+	margin: 0;
+}
+
+.toast-dismiss {
+	flex-shrink: 0;
+	padding: var(--xs);
+	background: transparent;
+	color: var(--c-primary-fg);
+	min-height: auto;
+}
+
+.toast-dismiss:hover {
+	background: var(--c-tertiary-bg);
+}
+
+@keyframes fly-in {
+	from {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes fly-out {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+}
+
+@keyframes expire {
+	from { width: 100%; }
+	to { width: 0%; }
+}
+
+/* Layout adaptation when sidebar no longer fits beside main content */
+
+@media (max-width: 50em) {
+	main {
+		--main-direction: column;
+	}
+
+	#sidebar {
+		width: 100%;
+		max-height: 40vh;
+		border-left: none;
+		border-top: var(--min) solid var(--c-tertiary-bg);
+	}
+
+	#toast-list {
+		top: auto;
+		bottom: var(--m);
+		right: var(--m);
+	}
+}

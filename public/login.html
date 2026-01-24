@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="common.css" media="screen">
+	<link rel="stylesheet" href="login.css" media="screen">
+
+	<script async src="login-check.js"></script>
+	<script type="module" src="login.js"></script>
+
+	<title>MyTable - Login</title>
+</head>
+<body class="page">
+	<header class="page-header">
+		<h1>MyTable Back Office</h1>
+	</header>
+
+	<main>
+		<template data-part="content">
+			<section id="login" class="section">
+				<h2 class="lvl1">Sign In</h2>
+
+				<form data-part="form">
+					<label>
+						<span>Username</span>
+						<input type="text" name="username" data-part="username" required autocomplete="username">
+					</label>
+
+					<label>
+						<span>Password</span>
+						<input type="password" name="password" data-part="password" required autocomplete="current-password">
+					</label>
+
+					<p class="message" data-part="message">
+						<span class="msg-credentials">Invalid username or password</span>
+						<span class="msg-network">An error occurred. Please try again.</span>
+					</p>
+
+					<button type="submit" data-part="submit">
+						<span class="label-idle">Sign In</span>
+						<span class="label-busy">Signing in...</span>
+					</button>
+				</form>
+			</section>
+		</template>
+
+		<p data-part="status">Loading...</p>
+	</main>
+</body>
+</html>

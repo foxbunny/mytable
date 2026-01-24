@@ -1,0 +1,7 @@
+-- Note: NpgsqlRest SSE with RAISE INFO was attempted but didn't stream to clients.
+-- The RAISE INFO messages were logged server-side but not sent via SSE.
+-- May require specific NpgsqlRest configuration or version.
+--
+-- Current notification mechanism uses polling:
+-- - Customer notifications: Polling via get_customer_notification()
+-- - Admin notifications: Polling via get_new_pending_reservations()

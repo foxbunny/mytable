@@ -1,0 +1,331 @@
+#restaurant-setup {
+	width: 100%;
+	max-width: 40em;
+}
+
+/* Floor plans section */
+.floorplan-list {
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var(--s);
+}
+
+.floorplan-item {
+	display: flex;
+	align-items: center;
+	gap: var(--m);
+	padding: var(--s);
+	background: var(--c-quaternary-bg);
+	border-radius: var(--r-s);
+}
+
+.floorplan-item img {
+	width: 4em;
+	height: 3em;
+	object-fit: cover;
+	border-radius: var(--r-s);
+}
+
+.floorplan-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--xs);
+}
+
+.add-floorplan:not([hidden]) {
+	display: flex;
+	flex-direction: column;
+	gap: var(--m);
+	padding: var(--m);
+	background: var(--c-quaternary-bg);
+	border-radius: var(--r-s);
+}
+
+.add-floorplan-actions {
+	display: flex;
+	gap: var(--s);
+	justify-content: flex-end;
+}
+
+.floorplan-preview {
+	display: flex;
+	align-items: center;
+	gap: var(--m);
+}
+
+.floorplan-preview img {
+	max-width: 10em;
+	max-height: 8em;
+	object-fit: contain;
+	border-radius: var(--r-s);
+}
+
+/* Working hours section */
+#working-hours-section {
+	display: grid;
+	grid-template-columns: auto 1fr;
+}
+
+#working-hours-section > legend {
+	grid-column: 1 / -1;
+}
+
+.day-row {
+	display: grid;
+	grid-template-columns: subgrid;
+	grid-column: 1 / -1;
+	align-items: center;
+	gap: var(--m);
+	padding: var(--s);
+}
+
+.day-times {
+	display: none;
+	align-items: center;
+	gap: var(--s);
+}
+
+.day-row[data-enabled] .day-times {
+	display: flex;
+}
+
+.day-times label {
+	flex-direction: row;
+	align-items: center;
+}
+
+/* Table Editor */
+.table-editor-dialog {
+	--dialog-max-width: min(95vw, 70em);
+	--dialog-max-height: 90vh;
+}
+
+.table-editor {
+	display: grid;
+	grid-template-columns: 1fr 14em;
+	gap: var(--m);
+}
+
+.table-editor-canvas {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	background: var(--c-quaternary-bg);
+	border-radius: var(--r-s);
+	overflow: hidden;
+	min-height: 20em;
+}
+
+.table-editor-canvas-inner {
+	position: relative;
+	cursor: crosshair;
+}
+
+.table-editor-canvas img {
+	display: block;
+	max-width: 100%;
+	max-height: 60vh;
+	width: auto;
+	height: auto;
+	pointer-events: none;
+	user-select: none;
+}
+
+.table-editor-sidebar {
+	display: flex;
+	flex-direction: column;
+	gap: var(--m);
+}
+
+.table-editor-sidebar h3 {
+	margin: 0;
+	font-size: var(--lvl4);
+	font-weight: 700;
+}
+
+.table-editor-sidebar .hint {
+	font-size: var(--label);
+	color: var(--c-tertiary-fg);
+}
+
+.table-props:not([hidden]) {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s);
+	padding: var(--s);
+	background: var(--c-tertiary-bg);
+	border-radius: var(--r-s);
+}
+
+.table-props label span {
+	font-size: var(--label);
+}
+
+.table-marker {
+	position: absolute;
+	left: calc(var(--x) * 1%);
+	top: calc(var(--y) * 1%);
+	translate: -50% -50%;
+	width: 2.5em;
+	height: 2.5em;
+	padding: 0;
+	border: calc(3 * var(--min)) solid var(--c-accent-fg);
+	border-radius: 50%;
+	background: var(--c-accent-bg);
+	color: var(--c-accent-fg);
+	font-size: 0.875em;
+	font-weight: 700;
+	cursor: grab;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.table-marker:hover {
+	filter: brightness(1.1);
+	box-shadow: var(--shadow-mid);
+}
+
+.table-marker[data-selected] {
+	border-color: var(--c-focus);
+	box-shadow: 0 0 0 calc(3 * var(--min)) var(--c-focus);
+}
+
+.table-marker[data-dragging] {
+	cursor: grabbing;
+	opacity: 0.8;
+}
+
+.table-marker-label {
+	pointer-events: none;
+}
+
+/* Toast notifications */
+#toast-list {
+	position: fixed;
+	top: var(--m);
+	right: var(--m);
+	width: min(24em, calc(100% - 2 * var(--m)));
+	z-index: 1000;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var(--s);
+}
+
+.toast {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: var(--s);
+	padding: var(--m);
+	background: var(--c-secondary-bg);
+	border-radius: var(--r-m);
+	box-shadow: var(--shadow-mid);
+	animation: fly-in 0.3s ease-out forwards;
+	overflow: hidden;
+}
+
+.toast::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 0.25em;
+	background: var(--c-error-bg);
+	animation: expire 10s linear forwards;
+}
+
+.toast:hover::after {
+	animation-play-state: paused;
+}
+
+.toast[data-clear] {
+	animation: fly-out 0.3s ease-in forwards;
+}
+
+.toast p {
+	flex: 1;
+	margin: 0;
+}
+
+.toast-dismiss {
+	flex-shrink: 0;
+	padding: var(--xs);
+	background: transparent;
+	color: var(--c-primary-fg);
+	min-height: auto;
+}
+
+.toast-dismiss:hover {
+	background: var(--c-tertiary-bg);
+}
+
+@keyframes fly-in {
+	from {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes fly-out {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+}
+
+@keyframes expire {
+	from { width: 100%; }
+	to { width: 0%; }
+}
+
+/* Message visibility */
+#restaurant-setup .message {
+	display: none;
+}
+
+#restaurant-setup[data-state="error-api"] .message,
+#restaurant-setup[data-state="error-network"] .message,
+#restaurant-setup[data-state="success"] .message {
+	display: block;
+}
+
+#restaurant-setup:not([data-state="error-api"]) .msg-api,
+#restaurant-setup:not([data-state="error-network"]) .msg-network,
+#restaurant-setup:not([data-state="success"]) .msg-success {
+	display: none;
+}
+
+/* Submit button text states */
+#restaurant-setup .label-busy {
+	display: none;
+}
+
+#restaurant-setup[data-state="loading"] button[type="submit"] .label-idle {
+	display: none;
+}
+
+#restaurant-setup[data-state="loading"] button[type="submit"] .label-busy {
+	display: inline;
+}
+
+/* Save floorplan button states */
+.add-floorplan-actions button[data-uploading] .label-idle {
+	display: none;
+}
+
+.add-floorplan-actions button[data-uploading] .label-busy {
+	display: inline;
+}

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="common.css" media="screen">
+	<link rel="stylesheet" href="index.css" media="screen">
+
+	<script type="module" src="index.js"></script>
+
+	<title>Make a Reservation - MyTable</title>
+</head>
+<body class="page">
+	<main>
+		<div id="reservation-flow" data-part="flow" data-step="form">
+			<!-- Step: Form -->
+			<section id="step-form" class="section">
+				<header>
+					<h1 class="lvl2">Make a Reservation</h1>
+				</header>
+				<form data-part="reservation-form">
+					<label>
+						<span>Your Name</span>
+						<input type="text" name="guestName" data-part="guest-name" required>
+					</label>
+
+					<div class="form-row">
+						<label>
+							<span>Phone</span>
+							<input type="tel" name="guestPhone" data-part="guest-phone">
+						</label>
+						<label>
+							<span>Email</span>
+							<input type="email" name="guestEmail" data-part="guest-email">
+						</label>
+					</div>
+
+					<div class="form-row">
+						<label>
+							<span>Party Size</span>
+							<input type="number" name="partySize" data-part="party-size" min="1" value="2" required>
+						</label>
+						<label>
+							<span>Date</span>
+							<input type="date" name="reservationDate" data-part="res-date" required>
+						</label>
+					</div>
+
+					<label>
+						<span>Time</span>
+						<input type="time" name="reservationTime" data-part="res-time" required>
+					</label>
+
+					<label>
+						<span>Special Requests</span>
+						<textarea name="notes" data-part="notes" rows="2"></textarea>
+					</label>
+
+					<button type="submit">Continue</button>
+				</form>
+			</section>
+
+			<!-- Step: Preview with countdown -->
+			<section id="step-preview" class="section">
+				<header>
+					<h1 class="lvl2">Review Your Reservation</h1>
+				</header>
+
+				<div class="preview-details">
+					<div class="preview-row">
+						<span class="preview-label">Name</span>
+						<span data-part="preview-name"></span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Contact</span>
+						<span data-part="preview-contact"></span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Party Size</span>
+						<span><span data-part="preview-party"></span> guests</span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Date</span>
+						<span data-part="preview-date"></span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Time</span>
+						<span data-part="preview-time"></span>
+					</div>
+					<div class="preview-row" data-part="preview-notes-row" hidden>
+						<span class="preview-label">Notes</span>
+						<span data-part="preview-notes"></span>
+					</div>
+				</div>
+
+				<div id="countdown-area">
+					<p id="countdown-text">
+						<span>Submitting in </span>
+						<span data-part="countdown-seconds">60</span>
+						<span> seconds...</span>
+					</p>
+					<div id="countdown-bar">
+						<div data-part="countdown-fill"></div>
+					</div>
+				</div>
+
+				<div class="buttons">
+					<button type="button" class="sub" data-action="edit">Edit</button>
+					<button type="button" data-action="submit-now">Submit Now</button>
+				</div>
+			</section>
+
+			<!-- Step: Waiting for admin -->
+			<section id="step-waiting" class="section">
+				<header>
+					<h1 class="lvl2">Request Submitted</h1>
+				</header>
+
+				<div class="waiting-content">
+					<div class="spinner" data-part="waiting-spinner"></div>
+					<p class="waiting-status">Waiting for confirmation...</p>
+				</div>
+
+				<div class="preview-details">
+					<div class="preview-row">
+						<span class="preview-label">Name</span>
+						<span data-part="waiting-name"></span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Party Size</span>
+						<span><span data-part="waiting-party"></span> guests</span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Date</span>
+						<span data-part="waiting-date"></span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Time</span>
+						<span data-part="waiting-time"></span>
+					</div>
+				</div>
+
+				<p class="bookmark-hint">
+					<x-icon name="info"></x-icon>
+					<span>Bookmark this page to check back later</span>
+				</p>
+			</section>
+
+			<!-- Step: Confirmed -->
+			<section id="step-confirmed" class="section">
+				<header>
+					<div class="result-icon" data-result="success">
+						<x-icon name="ok"></x-icon>
+					</div>
+					<h1 class="lvl2">Reservation Confirmed!</h1>
+				</header>
+
+				<div class="preview-details">
+					<div class="preview-row">
+						<span class="preview-label">Name</span>
+						<span data-part="confirmed-name"></span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Party Size</span>
+						<span><span data-part="confirmed-party"></span> guests</span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Date</span>
+						<span data-part="confirmed-date"></span>
+					</div>
+					<div class="preview-row">
+						<span class="preview-label">Time</span>
+						<span data-part="confirmed-time"></span>
+					</div>
+				</div>
+
+				<div class="admin-message" data-part="confirmed-message" hidden>
+					<h2 class="label">Message from restaurant</h2>
+					<p data-part="confirmed-message-text"></p>
+				</div>
+
+				<p class="confirmation-note">We look forward to seeing you!</p>
+
+				<p class="bookmark-hint">
+					<x-icon name="info"></x-icon>
+					<span>Bookmark this page for your records</span>
+				</p>
+
+				<button type="button" class="copy-link" data-action="copy-link">
+					<x-icon name="save"></x-icon>
+					<span data-part="copy-link-text">Copy link</span>
+					<span data-part="copy-link-done" hidden>Copied!</span>
+				</button>
+			</section>
+
+			<!-- Step: Declined -->
+			<section id="step-declined" class="section">
+				<header>
+					<div class="result-icon" data-result="error">
+						<x-icon name="close"></x-icon>
+					</div>
+					<h1 class="lvl2">Unable to Confirm</h1>
+				</header>
+
+				<p class="declined-intro">We're sorry, but we couldn't confirm your reservation request.</p>
+
+				<div class="admin-message" data-part="declined-message" hidden>
+					<h2 class="label">Message from restaurant</h2>
+					<p data-part="declined-message-text"></p>
+				</div>
+
+				<button type="button" data-action="retry">Try a Different Time</button>
+			</section>
+		</div>
+	</main>
+
+	<ul id="toast-list" aria-live="polite"></ul>
+
+	<template data-part="toast-template">
+		<li class="toast">
+			<p data-part="toast-message"></p>
+			<button type="button" class="toast-dismiss" data-part="toast-dismiss">
+				<x-icon name="close"></x-icon>
+				<span class="text-alt">Dismiss</span>
+			</button>
+		</li>
+	</template>
+</body>
+</html>

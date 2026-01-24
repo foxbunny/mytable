@@ -2,8 +2,14 @@
 
 set -e
 
+# Get script directory to ensure log file is created in the right place
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Setup logging
-LOG_FILE="setup.log"
+LOG_FILE="$SCRIPT_DIR/setup.log"
+
+# Initialize log file
+touch "$LOG_FILE"
 echo "Setup started at $(date)" > "$LOG_FILE"
 
 # Log function to append to log file
@@ -91,17 +97,33 @@ if command -v psql &> /dev/null && psql --version | grep -q "18"; then
 else
     echo "Installing PostgreSQL 18..."
 
-    # Add PostgreSQL APT repository
+    # Add PostgreSQL APT repository (modern method for Ubuntu 22.04+)
     sudo apt-get update |& log
-    sudo apt-get install -y wget ca-certificates |& log
-    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - |& log
-    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list |& log
+    sudo apt-get install -y wget ca-certificates gnupg |& log
+
+    # Create keyrings directory if it doesn't exist
+    sudo mkdir -p /usr/share/keyrings |& log
+
+    # Download and install the PostgreSQL GPG key
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+        sudo gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg |& log
+
+    # Add the PostgreSQL repository with signed-by option
+    echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | \
+        sudo tee /etc/apt/sources.list.d/pgdg.list |& log
 
     # Install PostgreSQL 18
     sudo apt-get update |& log
     sudo apt-get install -y postgresql-18 postgresql-contrib-18 |& log
 
-    echo "PostgreSQL 18 installed successfully"
+    # Verify installation
+    if command -v psql &> /dev/null; then
+        echo "PostgreSQL 18 installed successfully"
+    else
+        echo "ERROR: PostgreSQL installation failed - psql command not found"
+        echo "Check $LOG_FILE for details"
+        exit 1
+    fi
 fi
 
 # Configure PostgreSQL for local access without password
@@ -153,6 +175,19 @@ psql -U $DB_USER -d $DB_NAME -tc "SELECT 1 FROM information_schema.tables WHERE 
 
 echo "Database user '$DB_USER' and table 'mytable' created successfully"
 
+# Add DATABASE_URL to ~/.bashrc if not already present
+DATABASE_URL="postgres://$DB_USER@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=disable"
+BASHRC_FILE="$HOME/.bashrc"
+
+if ! grep -q "DATABASE_URL" "$BASHRC_FILE" 2>/dev/null; then
+    echo "" >> "$BASHRC_FILE"
+    echo "# Database connection for mytable (added by setup-vm.sh)" >> "$BASHRC_FILE"
+    echo "export DATABASE_URL=\"$DATABASE_URL\"" >> "$BASHRC_FILE"
+    echo "DATABASE_URL added to $BASHRC_FILE"
+else
+    echo "DATABASE_URL already configured in $BASHRC_FILE"
+fi
+
 # Output setup summary
 echo ""
 echo "=========================================="
@@ -179,6 +214,7 @@ echo "  Database: $DB_NAME"
 echo "  User: $DB_USER"
 echo "  Password: (none required)"
 echo "  Connection String: postgresql://$DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
+echo "  DATABASE_URL: $DATABASE_URL (exported in ~/.bashrc)"
 echo ""
 echo "Usage:"
 echo "  Run NpgsqlRest: NpgsqlRest [options]"
@@ -191,6 +227,9 @@ echo "  Create migration: dbmate new migration_name"
 echo "  Apply migrations: dbmate up"
 echo "  Rollback migration: dbmate rollback"
 echo "  Get help: dbmate --help"
+echo ""
+echo "Testing:"
+echo "  Run tests: ./test-db.sh"
 echo ""
 echo "Log file: $LOG_FILE"
 echo "=========================================="
