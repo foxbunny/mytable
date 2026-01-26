@@ -1,7 +1,7 @@
 -- Check if restaurant is configured
 drop function if exists is_restaurant_configured();
 create function is_restaurant_configured() returns restaurant_configured_result as $$
-	select row(exists(select 1 from restaurant where id = 1))::restaurant_configured_result;
+	select exists(select 1 from restaurant where id = 1);
 $$ language sql;
 
 comment on function is_restaurant_configured() is 'HTTP GET
@@ -44,14 +44,14 @@ begin;
 
 do $$
 declare
-	v_result restaurant_configured_result;
+	v_configured boolean;
 	v_info restaurant_info;
 begin
 	truncate restaurant cascade;
 
-	-- is_restaurant_configured returns (false) when no restaurant
-	v_result := is_restaurant_configured();
-	assert v_result.configured = false, 'configured should be false when no restaurant exists';
+	-- is_restaurant_configured returns false when no restaurant
+	select configured into v_configured from is_restaurant_configured();
+	assert v_configured = false, 'configured should be false when no restaurant exists';
 
 	-- get_restaurant returns null when no restaurant
 	v_info := get_restaurant();
@@ -59,8 +59,8 @@ begin
 
 	-- save_restaurant creates restaurant
 	perform save_restaurant('Test Restaurant', '123 Main St', '555-1234', '{"monday": {"open": "09:00", "close": "17:00"}}');
-	v_result := is_restaurant_configured();
-	assert v_result.configured = true, 'configured should be true after save';
+	select configured into v_configured from is_restaurant_configured();
+	assert v_configured = true, 'configured should be true after save';
 
 	-- get_restaurant returns saved data
 	v_info := get_restaurant();

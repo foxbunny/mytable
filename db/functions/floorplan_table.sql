@@ -79,7 +79,7 @@ Update a floorplan table';
 drop function if exists delete_floorplan_table(int);
 create function delete_floorplan_table(p_id int) returns floorplan_table_delete_result as $$
 	delete from floorplan_table where id = p_id
-	returning row(id)::floorplan_table_delete_result;
+	returning id;
 $$ language sql;
 
 comment on function delete_floorplan_table(int) is 'HTTP POST

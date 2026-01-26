@@ -120,8 +120,7 @@ let openTableEditor = (floorplan) => {
 			pYPct: yPct,
 			pCapacity: lastCapacity,
 			pNotes: lastNotes,
-		}).then(rows => {
-			let t = rows[0]
+		}).then(t => {
 			tables.push({
 				id: t.id,
 				name: t.name,
@@ -180,11 +179,11 @@ let openTableEditor = (floorplan) => {
 			let xPct = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width))
 			let yPct = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height))
 
-			api.post('update-floorplan-table', {pId: id, pXPct: xPct, pYPct: yPct}).then(rows => {
+			api.post('update-floorplan-table', {pId: id, pXPct: xPct, pYPct: yPct}).then(r => {
 				let table = tables.find(t => t.id == id)
 				if (table) {
-					table.xPct = rows[0].xPct
-					table.yPct = rows[0].yPct
+					table.xPct = r.xPct
+					table.yPct = r.yPct
 				}
 				renderMarkers()
 			}).catch(() => {
@@ -212,8 +211,7 @@ let openTableEditor = (floorplan) => {
 			pName: name || null,
 			pCapacity: capacity,
 			pNotes: notes,
-		}).then(rows => {
-			let r = rows[0]
+		}).then(r => {
 			let table = tables.find(t => t.id == selectedTableId)
 			if (table) {
 				table.name = r.name

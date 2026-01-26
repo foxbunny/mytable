@@ -1,7 +1,7 @@
 -- Check if system is set up (has at least one admin)
 drop function if exists is_setup();
 create function is_setup() returns setup_result as $$
-	select row(exists(select 1 from admin_users))::setup_result;
+	select exists(select 1 from admin_users);
 $$ language sql;
 
 comment on function is_setup() is 'HTTP GET
@@ -46,7 +46,7 @@ Authenticate admin user';
 -- Check if current session is authenticated
 drop function if exists is_authenticated();
 create function is_authenticated() returns auth_result as $$
-	select row(true)::auth_result;
+	select true;
 $$ language sql;
 
 comment on function is_authenticated() is 'HTTP GET
@@ -69,20 +69,20 @@ begin;
 
 do $$
 declare
-	v_setup setup_result;
-	v_auth auth_result;
+	v_setup boolean;
+	v_auth boolean;
 	v_login record;
 begin
 	truncate admin_users restart identity cascade;
 
-	-- is_setup returns (false) when no admin
-	v_setup := is_setup();
-	assert v_setup.setup = false, 'setup should be false when no admin exists';
+	-- is_setup returns false when no admin
+	select setup into v_setup from is_setup();
+	assert v_setup = false, 'setup should be false when no admin exists';
 
-	-- is_setup returns (true) when admin exists
+	-- is_setup returns true when admin exists
 	insert into admin_users (username, password_hash) values ('admin', 'hash');
-	v_setup := is_setup();
-	assert v_setup.setup = true, 'setup should be true when admin exists';
+	select setup into v_setup from is_setup();
+	assert v_setup = true, 'setup should be true when admin exists';
 
 	-- setup_admin creates first admin
 	truncate admin_users restart identity cascade;
@@ -113,9 +113,9 @@ begin
 	-- admin_login returns no rows with non-existent user
 	assert not exists(select 1 from admin_login('nonexistent', 'anypass')), 'should return no rows for non-existent user';
 
-	-- is_authenticated returns (true)
-	v_auth := is_authenticated();
-	assert v_auth.authenticated = true, 'should return authenticated: true';
+	-- is_authenticated returns true
+	select authenticated into v_auth from is_authenticated();
+	assert v_auth = true, 'should return authenticated: true';
 
 	raise notice 'All admin tests passed!';
 end;

@@ -229,8 +229,10 @@ let startAdminSSE = () => {
 
 	sse.onmessage = ev => {
 		let data = JSON.parse(ev.data)
-		showNewResToast(data)
-		loadPendingDates()
+		if (data.code == 'new_pending') {
+			showNewResToast(data)
+			loadPendingDates()
+		}
 		loadDataForDate()
 	}
 }

@@ -404,7 +404,7 @@ export let api = {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body)
-		}).then(r => r.json())
+		}).then(r => r.status == 204 ? {} : r.json())
 	}
 }
 

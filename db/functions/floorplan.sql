@@ -35,7 +35,7 @@ create function save_floorplan(
 ) returns floorplan_save_result as $$
 	insert into floorplan (name, image_path, image_width, image_height, sort_order)
 	values (p_name, p_image_path, p_image_width, p_image_height, p_sort_order)
-	returning row(id)::floorplan_save_result;
+	returning id;
 $$ language sql;
 
 comment on function save_floorplan(text, text, int, int, int) is 'HTTP POST
@@ -53,7 +53,7 @@ create function update_floorplan(
 	set name = p_name,
 		sort_order = coalesce(p_sort_order, sort_order)
 	where id = p_id
-	returning row(id)::floorplan_save_result;
+	returning id;
 $$ language sql;
 
 comment on function update_floorplan(int, text, int) is 'HTTP POST
@@ -64,7 +64,7 @@ Update floorplan name or sort order';
 drop function if exists delete_floorplan(int);
 create function delete_floorplan(p_id int) returns floorplan_save_result as $$
 	delete from floorplan where id = p_id
-	returning row(id)::floorplan_save_result;
+	returning id;
 $$ language sql;
 
 comment on function delete_floorplan(int) is 'HTTP POST

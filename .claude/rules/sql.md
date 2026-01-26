@@ -23,8 +23,8 @@ Always use `drop function if exists` followed by `create function`. Never use `c
 
 ```sql
 drop function if exists foo(text);
-create function foo(p_bar text) returns jsonb as $$
-	select jsonb_build_object('bar', p_bar);
+create function foo(p_bar text) returns my_result as $$
+	select row(p_bar)::my_result;
 $$ language sql;
 ```
 
@@ -35,69 +35,77 @@ When changing a function's signature, drop all old signatures first:
 drop function if exists create_thing(text, int);
 -- New signature
 drop function if exists create_thing(text, int, boolean);
-create function create_thing(p_name text, p_size int, p_active boolean default true) returns jsonb as $$
+create function create_thing(p_name text, p_size int, p_active boolean default true) returns thing_result as $$
 	...
 $$ language sql;
 ```
 
 ## Return types
 
-**All functions return `jsonb`.** No custom types, no scalar returns.
+**All functions return custom composite types.** Define types in migrations, then use them in functions.
 
-- **Single objects**: Use `jsonb_build_object()`
-- **Lists**: Use `jsonb_agg()` with `coalesce(..., '[]'::jsonb)` for empty arrays
-- **Nested structures**: Build with `jsonb_build_object()` containing `jsonb_agg()` subqueries
+- **Single objects**: Return a composite type directly
+- **Lists**: Use `setof type` to return a set of rows
+- **Mutations with no data**: Return `void`
+- **Errors**: Use `raise exception` for error conditions
 
-**Exception:** Functions with the `@login` directive must use `returns table(...)` because NpgsqlRest requires named columns for session handling.
+**Exceptions:**
+- `@login` functions must use `returns table(...)` for NpgsqlRest session handling
+- `@logout` functions return `text` for NpgsqlRest cookie handling
+- File upload handlers return `json` for NpgsqlRest file metadata
+- **Simple boolean returns**: Use `returns table(column boolean)` instead of a composite type (see below)
 
 ```sql
--- Single object (mutation, status check, lookup)
-create function get_restaurant() returns jsonb as $$
-	select jsonb_build_object(
-		'name', name,
-		'address', address,
-		'phone', phone
-	)
+-- Type definitions (in migrations)
+create type restaurant_info as (
+	name text,
+	address text,
+	phone text,
+	working_hours jsonb
+);
+
+create type floorplan_info as (
+	id int,
+	name text,
+	image_path text,
+	image_width int,
+	image_height int,
+	sort_order int
+);
+
+-- Single object
+create function get_restaurant() returns restaurant_info as $$
+	select row(name, address, phone, working_hours)::restaurant_info
 	from restaurant
 	where id = 1;
 $$ language sql;
 
--- List
-create function get_floorplans() returns jsonb as $$
-	select coalesce(jsonb_agg(jsonb_build_object(
-		'id', id,
-		'name', name,
-		'imagePath', image_path
-	) order by sort_order, id), '[]')
-	from floorplan;
+-- List (setof)
+create function get_floorplans() returns setof floorplan_info as $$
+	select id, name, image_path, image_width, image_height, sort_order
+	from floorplan
+	order by sort_order, id;
 $$ language sql;
 
--- Nested structure
-create function get_table_status_for_date(p_date date) returns jsonb as $$
-	with table_reservations as (
-		select floorplan_table_id, jsonb_agg(jsonb_build_object(
-			'id', r.id,
-			'guestName', r.guest_name
-		)) as reservations
-		from reservation r
-		join reservation_table rt on r.id = rt.reservation_id
-		where r.reservation_date = p_date
-		group by floorplan_table_id
-	)
-	select coalesce(jsonb_agg(jsonb_build_object(
-		'id', ft.id,
-		'name', ft.name,
-		'reservations', coalesce(tr.reservations, '[]')
-	)), '[]')
-	from floorplan_table ft
-	left join table_reservations tr on ft.id = tr.floorplan_table_id;
+-- Mutation returning void
+create function save_restaurant(p_name text, p_address text) returns void as $$
+	insert into restaurant (id, name, address)
+	values (1, p_name, p_address)
+	on conflict (id) do update set
+		name = excluded.name,
+		address = excluded.address;
 $$ language sql;
 
--- Empty result (mutation confirmation)
-create function delete_thing(p_id int) returns jsonb as $$
-	delete from thing where id = p_id
-	returning '{}'::jsonb;
-$$ language sql;
+-- Error handling with exceptions
+create function setup_admin(p_username text, p_password text) returns void as $$
+begin
+	if exists(select 1 from admin_users) then
+		raise exception 'ALREADY_SETUP: System is already set up';
+	end if;
+	insert into admin_users (username, password_hash)
+	values (p_username, crypt(p_password, gen_salt('bf')));
+end;
+$$ language plpgsql;
 
 -- Login function (exception: must use returns table for @login)
 create function admin_login(p_username text, p_password text)
@@ -107,19 +115,71 @@ returns table(user_id int, user_name text) as $$
 	where username = p_username
 		and password_hash = crypt(p_password, password_hash);
 $$ language sql;
--- Returns empty result set if credentials don't match
 ```
 
-## JSON key naming
+## Boolean fields in composite types
 
-Use camelCase for JSON keys to match JavaScript conventions:
+**NpgsqlRest does not correctly serialize boolean values when using `row()` constructor with composite types.** It returns `(t)` or `(f)` instead of `true` or `false`.
+
+This fails:
+```sql
+create type check_result as (ok boolean);
+
+create function is_ready() returns check_result as $$
+	select row(true)::check_result;  -- Returns {"ok":"(t)"} - WRONG
+$$ language sql;
+```
+
+**Workaround:** For functions returning a single boolean (or simple boolean checks), use `returns table()` instead:
 
 ```sql
-jsonb_build_object(
-	'id', id,
-	'guestName', guest_name,      -- not 'guest_name'
-	'reservationDate', reservation_date
-)
+create function is_ready() returns table(ok boolean) as $$
+	select true;  -- Returns {"ok":true} - CORRECT
+$$ language sql;
+
+create function is_setup() returns table(setup boolean) as $$
+	select exists(select 1 from admin_users);
+$$ language sql;
+```
+
+**Note:** Boolean fields work correctly in composite types when returned via `setof` from a multi-column SELECT:
+
+```sql
+create type table_info as (id int, name text, is_blocked boolean);
+
+create function get_tables() returns setof table_info as $$
+	select id, name, blocked  -- booleans serialize correctly here
+	from tables;
+$$ language sql;
+```
+
+## Nested data with jsonb
+
+When a composite type needs to contain nested arrays or complex structures (like a list of reservations per table), use `jsonb` for that field:
+
+```sql
+create type table_status_info as (
+	id int,
+	name text,
+	reservations jsonb  -- nested array of reservation objects
+);
+
+create function get_table_status() returns setof table_status_info as $$
+	with table_reservations as (
+		select floorplan_table_id, jsonb_agg(jsonb_build_object(
+			'id', r.id,
+			'guestName', r.guest_name
+		)) as reservations
+		from reservation r
+		group by floorplan_table_id
+	)
+	select
+		ft.id,
+		ft.name,
+		coalesce(tr.reservations, '[]')
+	from floorplan_table ft
+	left join table_reservations tr on ft.id = tr.floorplan_table_id;
+$$ language sql;
 ```
 
 ## SQL vs PL/PgSQL
