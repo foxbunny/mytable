@@ -1,5 +1,6 @@
 -- Customer creates a reservation (public endpoint, no auth)
 drop function if exists customer_create_reservation(text, int, date, time, text, text, text);
+drop function if exists customer_create_reservation(text, int, date, time, text, text, text, text);
 create function customer_create_reservation(
 	p_guest_name text,
 	p_party_size int,
@@ -7,8 +8,9 @@ create function customer_create_reservation(
 	p_reservation_time time,
 	p_guest_phone text default null,
 	p_guest_email text default null,
-	p_notes text default null
-) returns table(reservation_id int, session_token text) as $$
+	p_notes text default null,
+	p_channel_id text default null
+) returns jsonb as $$
 declare
 	v_reservation_id int;
 	v_token text;
@@ -27,39 +29,31 @@ begin
 	returning id into v_reservation_id;
 
 	-- Create customer session with token
-	insert into customer_session (reservation_id)
-	values (v_reservation_id)
+	insert into customer_session (reservation_id, channel_id)
+	values (v_reservation_id, p_channel_id)
 	returning token into v_token;
 
-	-- Notify admin via LISTEN/NOTIFY
-	perform pg_notify('admin_notifications', jsonb_build_object(
+	-- Broadcast to SSE clients
+	raise info '%', jsonb_build_object(
 		'code', 'new_pending',
 		'reservationId', v_reservation_id,
 		'guestName', p_guest_name,
 		'partySize', p_party_size,
 		'reservationDate', p_reservation_date,
 		'reservationTime', p_reservation_time
-	)::text);
+	);
 
-	return query select v_reservation_id, v_token;
+	return jsonb_build_object('reservationId', v_reservation_id, 'sessionToken', v_token);
 end;
 $$ language plpgsql;
 
-comment on function customer_create_reservation(text, int, date, time, text, text, text) is 'HTTP POST
+comment on function customer_create_reservation(text, int, date, time, text, text, text, text) is 'HTTP POST
+@sse
 Create a new reservation from customer portal';
 
 -- Get customer notification status (polling fallback)
 drop function if exists get_customer_notification(text);
-create function get_customer_notification(p_token text)
-returns table(
-	code text,
-	admin_message text,
-	reservation_status text,
-	reservation_date date,
-	reservation_time time,
-	party_size int,
-	guest_name text
-) as $$
+create function get_customer_notification(p_token text) returns jsonb as $$
 declare
 	v_session record;
 	v_reservation record;
@@ -71,7 +65,7 @@ begin
 	where cs.token = p_token and cs.expires_at > now();
 
 	if v_session is null then
-		return;
+		return null;
 	end if;
 
 	-- Get reservation details
@@ -88,24 +82,26 @@ begin
 	limit 1;
 
 	if v_notification is not null then
-		return query select
-			v_notification.code,
-			v_notification.admin_message,
-			v_reservation.status,
-			v_reservation.reservation_date,
-			v_reservation.reservation_time,
-			v_reservation.party_size,
-			v_reservation.guest_name;
+		return jsonb_build_object(
+			'code', v_notification.code,
+			'adminMessage', v_notification.admin_message,
+			'reservationStatus', v_reservation.status,
+			'reservationDate', v_reservation.reservation_date,
+			'reservationTime', v_reservation.reservation_time,
+			'partySize', v_reservation.party_size,
+			'guestName', v_reservation.guest_name
+		);
 	else
 		-- Return current status without notification code
-		return query select
-			null::text,
-			null::text,
-			v_reservation.status,
-			v_reservation.reservation_date,
-			v_reservation.reservation_time,
-			v_reservation.party_size,
-			v_reservation.guest_name;
+		return jsonb_build_object(
+			'code', null,
+			'adminMessage', null,
+			'reservationStatus', v_reservation.status,
+			'reservationDate', v_reservation.reservation_date,
+			'reservationTime', v_reservation.reservation_time,
+			'partySize', v_reservation.party_size,
+			'guestName', v_reservation.guest_name
+		);
 	end if;
 end;
 $$ language plpgsql;
@@ -141,19 +137,25 @@ $$ language plpgsql;
 comment on function mark_notification_delivered(text) is 'HTTP POST
 Mark customer notification as delivered';
 
--- Confirm reservation with notification
+-- Resolve reservation (confirm or decline) with notification
 drop function if exists confirm_reservation(int, text, int[]);
-create function confirm_reservation(
+drop function if exists decline_reservation(int, text);
+drop function if exists resolve_reservation(int, text, text, int[]);
+create function resolve_reservation(
 	p_id int,
+	p_status text,
 	p_admin_message text default null,
 	p_table_ids int[] default null
 ) returns jsonb as $$
 declare
 	v_token text;
+	v_code text;
 begin
+	v_code := 'reservation_' || p_status;
+
 	-- Update reservation status
 	update reservation
-	set status = 'confirmed'
+	set status = p_status
 	where id = p_id;
 
 	-- Assign tables if provided
@@ -165,91 +167,48 @@ begin
 
 	-- Create notification record
 	insert into reservation_notification (reservation_id, code, admin_message)
-	values (p_id, 'reservation_confirmed', p_admin_message);
+	values (p_id, v_code, p_admin_message);
 
-	-- Get customer session token for this reservation
-	select token into v_token
+	-- Broadcast to SSE clients
+	select channel_id into v_token
 	from customer_session
 	where reservation_id = p_id and expires_at > now()
+		and channel_id is not null
 	limit 1;
 
-	-- Notify customer via their channel
 	if v_token is not null then
-		perform pg_notify('customer_' || v_token, jsonb_build_object(
-			'code', 'reservation_confirmed',
+		raise info '%', jsonb_build_object(
+			'code', v_code,
+			'channelId', v_token,
 			'adminMessage', p_admin_message
-		)::text);
+		);
 	end if;
 
 	return '{}'::jsonb;
 end;
 $$ language plpgsql;
 
-comment on function confirm_reservation(int, text, int[]) is 'HTTP POST
+comment on function resolve_reservation(int, text, text, int[]) is 'HTTP POST
 @authorize
-Confirm a reservation and notify customer';
-
--- Decline reservation with notification
-drop function if exists decline_reservation(int, text);
-create function decline_reservation(
-	p_id int,
-	p_admin_message text default null
-) returns jsonb as $$
-declare
-	v_token text;
-begin
-	-- Update reservation status
-	update reservation
-	set status = 'declined'
-	where id = p_id;
-
-	-- Create notification record
-	insert into reservation_notification (reservation_id, code, admin_message)
-	values (p_id, 'reservation_declined', p_admin_message);
-
-	-- Get customer session token for this reservation
-	select token into v_token
-	from customer_session
-	where reservation_id = p_id and expires_at > now()
-	limit 1;
-
-	-- Notify customer via their channel
-	if v_token is not null then
-		perform pg_notify('customer_' || v_token, jsonb_build_object(
-			'code', 'reservation_declined',
-			'adminMessage', p_admin_message
-		)::text);
-	end if;
-
-	return '{}'::jsonb;
-end;
-$$ language plpgsql;
-
-comment on function decline_reservation(int, text) is 'HTTP POST
-@authorize
-Decline a reservation and notify customer';
+@sse
+Resolve a reservation (confirm or decline) and notify customer';
 
 -- Get new pending reservations since a given timestamp (for admin polling)
 drop function if exists get_new_pending_reservations(timestamptz);
-create function get_new_pending_reservations(p_since timestamptz default null)
-returns table(
-	id int,
-	guest_name text,
-	party_size int,
-	reservation_date date,
-	reservation_time time,
-	created_at timestamptz
-) as $$
-begin
-	return query
-	select r.id, r.guest_name, r.party_size, r.reservation_date, r.reservation_time, r.created_at
+create function get_new_pending_reservations(p_since timestamptz default null) returns jsonb as $$
+	select coalesce(jsonb_agg(jsonb_build_object(
+		'id', r.id,
+		'guestName', r.guest_name,
+		'partySize', r.party_size,
+		'reservationDate', r.reservation_date,
+		'reservationTime', r.reservation_time,
+		'createdAt', r.created_at
+	) order by r.created_at desc), '[]')
 	from reservation r
 	where r.status = 'pending'
 		and r.source = 'online'
-		and (p_since is null or r.created_at > p_since)
-	order by r.created_at desc;
-end;
-$$ language plpgsql;
+		and (p_since is null or r.created_at > p_since);
+$$ language sql;
 
 comment on function get_new_pending_reservations(timestamptz) is 'HTTP GET
 @authorize

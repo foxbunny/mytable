@@ -356,6 +356,19 @@ button.icon {
 	aspect-ratio: 1;
 }
 
+button.link {
+	min-height: 0;
+	padding: 0;
+	background: none;
+	color: inherit;
+}
+
+button.link:hover:not(:disabled) {
+	filter: none;
+	box-shadow: none;
+	text-decoration: underline;
+}
+
 button:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;

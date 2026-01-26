@@ -28,7 +28,8 @@ $$ language plpgsql;
 comment on function setup_admin(text, text) is 'HTTP POST
 Set up the initial admin account. Only works if no admin exists.';
 
--- Admin login
+-- Admin login (returns row on success, empty on failure)
+-- NOTE: @login functions must use returns table() for NpgsqlRest session handling
 drop function if exists admin_login(text, text);
 create function admin_login(
 	p_username text,
@@ -37,7 +38,7 @@ create function admin_login(
 	select a.id, a.username
 	from admin_users a
 	where a.username = p_username
-	and a.password_hash = crypt(p_password, a.password_hash);
+		and a.password_hash = crypt(p_password, a.password_hash);
 $$ language sql;
 
 comment on function admin_login(text, text) is 'HTTP POST
@@ -46,13 +47,24 @@ Authenticate admin user';
 
 -- Check if current session is authenticated
 drop function if exists is_authenticated();
-create function is_authenticated() returns boolean as $$
-    select true;
+create function is_authenticated() returns jsonb as $$
+	select jsonb_build_object('authenticated', true);
 $$ language sql;
 
 comment on function is_authenticated() is 'HTTP GET
 @authorize
-Returns true if authenticated, 401 if not';
+Returns authenticated status if session is valid, 401 if not';
+
+-- Admin logout
+drop function if exists admin_logout();
+create function admin_logout() returns text as $$
+	select 'Cookies'::text;
+$$ language sql;
+
+comment on function admin_logout() is 'HTTP POST
+@logout
+@authorize
+Sign out the current admin session';
 
 -- Tests (wrapped in transaction, always rolled back)
 begin;
@@ -60,7 +72,7 @@ begin;
 do $$
 declare
 	v_result jsonb;
-	result record;
+	v_login record;
 begin
 	truncate admin_users restart identity cascade;
 
@@ -89,15 +101,19 @@ begin
 	-- admin_login succeeds with correct credentials
 	truncate admin_users restart identity cascade;
 	perform setup_admin('admin', 'secret123');
-	select * into result from admin_login('admin', 'secret123');
-	assert result.user_id = 1, 'user_id should be 1';
-	assert result.user_name = 'admin', 'user_name should match';
+	select * into v_login from admin_login('admin', 'secret123');
+	assert v_login.user_id = 1, 'user_id should be 1';
+	assert v_login.user_name = 'admin', 'user_name should match';
 
 	-- admin_login returns no rows with wrong password
-	assert not exists(select 1 from admin_login('admin', 'wrongpass')), 'should return no rows';
+	assert not exists(select 1 from admin_login('admin', 'wrongpass')), 'should return no rows for wrong password';
 
 	-- admin_login returns no rows with non-existent user
-	assert not exists(select 1 from admin_login('nonexistent', 'anypass')), 'should return no rows';
+	assert not exists(select 1 from admin_login('nonexistent', 'anypass')), 'should return no rows for non-existent user';
+
+	-- is_authenticated returns authenticated: true
+	v_result := is_authenticated();
+	assert (v_result->>'authenticated')::boolean = true, 'should return authenticated: true';
 
 	raise notice 'All admin tests passed!';
 end;

@@ -5,8 +5,7 @@ let state = {
 	token: null,
 	countdownTimer: null,
 	countdownSeconds: 60,
-	sse: null,
-	pollTimer: null
+	sse: null
 }
 
 let $toastList = document.getElementById('toast-list')
@@ -154,6 +153,8 @@ let submitReservation = () => {
 	let data = state.formData
 	console.assert(data, 'No form data to submit')
 
+	state.channelId = crypto.randomUUID()
+
 	api.post('customer-create-reservation', {
 		pGuestName: data.guestName,
 		pPartySize: parseInt(data.partySize),
@@ -161,14 +162,17 @@ let submitReservation = () => {
 		pReservationTime: data.reservationTime,
 		pGuestPhone: data.guestPhone || null,
 		pGuestEmail: data.guestEmail || null,
-		pNotes: data.notes || null
+		pNotes: data.notes || null,
+		pChannelId: state.channelId
 	}).then(result => {
-		if (result && result.length > 0) {
-			state.token = result[0].sessionToken
+		if (result && result.sessionToken) {
+			state.token = result.sessionToken
 			// Update URL with token (bookmarkable)
 			let url = new URL(location.href)
 			url.searchParams.set('token', state.token)
 			history.replaceState(null, '', url)
+			// Store channel in sessionStorage (survives refresh)
+			sessionStorage.setItem('channelId', state.channelId)
 
 			populateWaiting(data)
 			setStep('waiting')
@@ -180,57 +184,20 @@ let submitReservation = () => {
 let startSSE = () => {
 	if (!state.token) return
 
-	state.sse = new EventSource('/api/stream-customer-notifications?pToken=' + encodeURIComponent(state.token))
+	state.sse = new EventSource('/api/resolve-reservation/info')
 
 	state.sse.onmessage = ev => {
 		let data = JSON.parse(ev.data)
-		handleNotification(data.code, data.adminMessage)
+		if (data.channelId == state.channelId)
+			handleNotification(data.code, data.adminMessage)
 	}
-
-	state.sse.onerror = () => {
-		// Fall back to polling
-		state.sse.close()
-		state.sse = null
-		startPolling()
-	}
-}
-
-let startPolling = () => {
-	if (state.pollTimer) return
-
-	state.pollTimer = setInterval(() => {
-		checkStatus()
-	}, 5000)
-}
-
-let stopPolling = () => {
-	if (state.pollTimer) {
-		clearInterval(state.pollTimer)
-		state.pollTimer = null
-	}
-}
-
-let checkStatus = () => {
-	if (!state.token) return
-
-	api.get('get-customer-notification', { pToken: state.token }).then(result => {
-		if (result && result.length > 0) {
-			let data = result[0]
-			if (data.code)
-				handleNotification(data.code, data.adminMessage, data)
-			else if (data.reservationStatus != 'pending')
-				handleStatusChange(data.reservationStatus, data)
-		}
-	}).catch(() => {})
 }
 
 let handleNotification = (code, message, data) => {
-	// Stop SSE and polling
 	if (state.sse) {
 		state.sse.close()
 		state.sse = null
 	}
-	stopPolling()
 
 	// Mark as delivered
 	if (state.token)
@@ -249,20 +216,11 @@ let handleNotification = (code, message, data) => {
 	}
 }
 
-let handleStatusChange = (status, data) => {
-	if (status == 'confirmed')
-		handleNotification('reservation_confirmed', null, data)
-	else if (status == 'declined')
-		handleNotification('reservation_declined', null, data)
-}
-
 let loadFromToken = (token) => {
 	state.token = token
 
-	api.get('get-customer-notification', { pToken: token }).then(result => {
-		if (result && result.length > 0) {
-			let data = result[0]
-
+	api.get('get-customer-notification', { pToken: token }).then(data => {
+		if (data) {
 			// Build a data object for display
 			let displayData = {
 				guestName: data.guestName,
@@ -283,6 +241,9 @@ let loadFromToken = (token) => {
 				$declinedMessage.shown(!!data.adminMessage)
 				setStep('declined')
 			}
+		} else {
+			// No data (expired session), show form
+			setStep('form')
 		}
 	}).catch(() => {
 		// Invalid token, show form
@@ -293,6 +254,8 @@ let loadFromToken = (token) => {
 let resetForm = () => {
 	state.formData = null
 	state.token = null
+	state.channelId = null
+	sessionStorage.removeItem('channelId')
 	// Clear token from URL
 	let url = new URL(location.href)
 	url.searchParams.delete('token')
@@ -339,5 +302,7 @@ setFormDefaults()
 // Check for token in URL
 let urlParams = new URLSearchParams(location.search)
 let token = urlParams.get('token')
-if (token)
+if (token) {
+	state.channelId = sessionStorage.getItem('channelId')
 	loadFromToken(token)
+}

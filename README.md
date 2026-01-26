@@ -1,4 +1,4 @@
-# MyTable - Restauran reservation app
+# MyTable - Restaurant reservation app
 
 MyTable comprises of two frontends and one backend. The two frontends are:
 
@@ -127,7 +127,7 @@ Database schema changes are managed using [dbmate](https://github.com/amacneil/d
 ```
 db/
 ├── migrations/    # Schema migrations (tables, indexes, etc.)
-├── functions/     # Idempotent function definitions (CREATE OR REPLACE)
+├── functions/     # Idempotent function definitions (DROP + CREATE)
 └── schema.sql     # Auto-generated schema dump
 ```
 
@@ -156,90 +156,25 @@ The script will:
 ### Creating Migrations
 
 ```bash
-# Create a new migration (for tables, indexes, etc.)
 limactl shell mytable dbmate new create_reservations_table
-```
-
-Migration files use this format:
-
-```sql
--- migrate:up
-CREATE TABLE reservations (
-    id SERIAL PRIMARY KEY,
-    customer_name VARCHAR(100) NOT NULL,
-    reservation_time TIMESTAMP NOT NULL
-);
-
--- migrate:down
-DROP TABLE reservations;
 ```
 
 ### Creating Functions
 
-Add `.sql` files to `db/functions/` using `CREATE OR REPLACE`:
-
-```sql
--- db/functions/reservations.sql
-CREATE OR REPLACE FUNCTION get_available_tables(...)
-RETURNS TABLE(...) AS $$
-    ...
-$$ LANGUAGE sql;
-```
-
-Functions are applied alphabetically on each deploy.
+Add `.sql` files to `db/functions/`. Functions are applied alphabetically on each deploy.
 
 ## Testing
 
-Tests are written as PostgreSQL procedures in the `test` schema, following Vedran Bilopavlović's approach from [Unit Testing and TDD With PostgreSQL is Easy](https://medium.com/@vbilopav/unit-testing-and-tdd-with-postgresql-is-easy-b6f14623b8cf).
-
-### Test Directory Structure
-
-```
-db/
-└── tests/          # SQL test files
-    └── auth.sql    # Authentication tests
-```
-
-### Running Tests
+Tests are PostgreSQL procedures in the `test` schema. To add tests, create a `db/tests/` directory with `.sql` files.
 
 ```bash
-# Run all tests
-limactl shell mytable ./test-db.sh
-
-# Or with explicit DATABASE_URL
-./test-db.sh "postgres://user@localhost:5432/mytable?sslmode=disable"
+limactl shell mytable ./test-db.sh "postgres://$(whoami)@localhost:5432/mytable?sslmode=disable"
 ```
 
-### Writing Tests
+## Coding Standards
 
-Tests are parameterless procedures that call `rollback` at the end:
-
-```sql
-create or replace procedure test.my_feature_works()
-language plpgsql as $$
-begin
-    -- arrange
-    truncate my_table restart identity cascade;
-    insert into my_table (name) values ('test');
-
-    -- act & assert
-    assert (select count(*) from my_table) = 1, 'should have 1 row';
-    assert my_function('test') = true, 'should return true';
-
-    rollback;
-end;
-$$;
-```
-
-Each test runs in its own transaction and rolls back, ensuring isolation.
+Coding standards for SQL, JavaScript, CSS, and HTML are documented in `.claude/rules/`.
 
 ## Design System
 
 Defined in `public/common.css`, demonstrated at `/design-system.html`.
-
-### Key Concepts
-
-- **Colors** are foreground/background pairs (`--c-*-fg`, `--c-*-bg`). Primary through quaternary represent nested container layers.
-- **Spacing** uses a geometric 2× progression with `--m = 1em` as base. Exception: `--min` is a fixed `0.06rem` (~1px) for hairlines.
-- **Typography**: Heading elements are bold but inherit size. Use `.lvl1`-`.lvl4` for visual sizing independent of semantic level.
-- **Components** have element-specific variables (e.g., `--button-bg`, `--section-padding`) for contextual overrides.

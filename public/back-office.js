@@ -222,40 +222,17 @@ let showNewResToast = (r) => {
 	toast.each(el => $toastList.appendChild(el))
 }
 
-// ── Polling ──
+// ── SSE ──
 
-let seenPendingIds = new Set()
-let pollTimer = null
-let offline = false
+let startAdminSSE = () => {
+	let sse = new EventSource('/api/customer-create-reservation/info')
 
-let setOffline = (v) => {
-	if (v == offline) return
-	offline = v
-	if (v)
-		document.body.dataset.offline = ''
-	else
-		delete document.body.dataset.offline
-}
-
-let pollNewReservations = () => {
-	api.get('get-new-pending-reservations', {}).then(results => {
-		if (!Array.isArray(results)) return
-
-		if (offline) {
-			setOffline(false)
-			loadDataForDate()
-			if (state.bookingMode) loadSlotTables(false)
-		}
-
-		let newOnes = results.filter(r => !seenPendingIds.has(r.id))
-		if (newOnes.length > 0) {
-			for (let r of newOnes) seenPendingIds.add(r.id)
-			for (let r of newOnes)
-				showNewResToast(r)
-			loadPendingDates()
-			loadDataForDate()
-		}
-	}).catch(() => setOffline(true))
+	sse.onmessage = ev => {
+		let data = JSON.parse(ev.data)
+		showNewResToast(data)
+		loadPendingDates()
+		loadDataForDate()
+	}
 }
 
 // ── Calendar ──
@@ -473,8 +450,7 @@ $toolbarBlock.on('click', () => {
 page.part('new-res-btn').on('click', () => enterBookingMode('new'))
 
 let loadPendingDates = () => {
-	return api.get('get-pending-dates').then(rows => {
-		let dates = rows.map(r => r.reservationDate)
+	return api.get('get-pending-dates').then(dates => {
 		$calendar.calendarPending(dates)
 	})
 }
@@ -666,8 +642,9 @@ let confirmBooking = () => {
 			: Promise.resolve()
 
 		durationPromise.then(() => {
-			return api.post('confirm-reservation', {
+			return api.post('resolve-reservation', {
 				pId: res.id,
+				pStatus: 'confirmed',
 				pAdminMessage: message,
 				pTableIds: state.bookingSelectedIds
 			})
@@ -686,8 +663,9 @@ let declineBooking = () => {
 	if (!state.bookingPendingRes) return
 
 	let message = $bookingAdminMessage.val() || null
-	api.post('decline-reservation', {
+	api.post('resolve-reservation', {
 		pId: state.bookingPendingRes.id,
+		pStatus: 'declined',
 		pAdminMessage: message
 	}).then(() => {
 		exitBookingMode()
@@ -851,6 +829,12 @@ $reservationForm.submit(data => {
 
 dateSync.set(state.currentDate)
 
+part('logout').on('click', () => {
+	api.post('admin-logout').then(() => {
+		window.location.href = 'login.html'
+	})
+})
+
 api.get('get-restaurant').then(restaurant => {
 	if (restaurant?.name) {
 		document.title = `MyTable ${restaurant.name} Back Office`
@@ -858,12 +842,7 @@ api.get('get-restaurant').then(restaurant => {
 	}
 })
 
-// Initialize seen IDs on load, then start polling
-api.get('get-new-pending-reservations', {}).then(results => {
-	if (Array.isArray(results))
-		for (let r of results) seenPendingIds.add(r.id)
-	pollTimer = setInterval(pollNewReservations, 5000)
-})
+startAdminSSE()
 
 loadFloorplans()
 	.then(() => loadDataForDate())

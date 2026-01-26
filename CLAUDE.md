@@ -81,7 +81,7 @@ Key configuration in `default.json`:
 ```
 db/
 ├── migrations/    # Schema migrations (tables, indexes, etc.)
-├── functions/     # Idempotent function definitions (CREATE OR REPLACE)
+├── functions/     # Idempotent function definitions (DROP + CREATE)
 └── schema.sql     # Auto-generated schema dump
 ```
 
@@ -115,7 +115,7 @@ dbmate status
 ### When to Use migrations/ vs functions/
 
 - **migrations/**: Tables, indexes, constraints, data migrations - things that run once
-- **functions/**: Stored functions/procedures using `CREATE OR REPLACE` - re-applied on every deploy
+- **functions/**: Stored functions/procedures using `DROP + CREATE` - re-applied on every deploy
 
 ## Running the Application
 

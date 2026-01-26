@@ -17,56 +17,110 @@ Use lower-case keywords for everything. Use snake_case for names.
 
 This avoids ambiguity between parameters, local variables, and column names.
 
-## Example function formatting:
+## Function creation
+
+Always use `drop function if exists` followed by `create function`. Never use `create or replace function` — it cannot change function signatures and leads to ghost overloads.
 
 ```sql
-create or replace function foo(p_bar text) returns jsonb as $$
-select ....
+drop function if exists foo(text);
+create function foo(p_bar text) returns jsonb as $$
+	select jsonb_build_object('bar', p_bar);
 $$ language sql;
 ```
 
+When changing a function's signature, drop all old signatures first:
+
 ```sql
-create or replace function bar(p_id int) returns text as $$
-declare
-	v_name text;
-begin
-	select name into v_name from users where id = p_id;
-	return v_name;
-end;
-$$ language plpgsql;
+-- Old signature
+drop function if exists create_thing(text, int);
+-- New signature
+drop function if exists create_thing(text, int, boolean);
+create function create_thing(p_name text, p_size int, p_active boolean default true) returns jsonb as $$
+	...
+$$ language sql;
 ```
 
 ## Return types
 
-Use `returns table(...)` for functions that return **multiple rows** or **zero-or-more rows** (i.e., read operations where the result is a list or may be empty):
+**All functions return `jsonb`.** No custom types, no scalar returns.
+
+- **Single objects**: Use `jsonb_build_object()`
+- **Lists**: Use `jsonb_agg()` with `coalesce(..., '[]'::jsonb)` for empty arrays
+- **Nested structures**: Build with `jsonb_build_object()` containing `jsonb_agg()` subqueries
+
+**Exception:** Functions with the `@login` directive must use `returns table(...)` because NpgsqlRest requires named columns for session handling.
 
 ```sql
--- Multiple rows: list of items
-create or replace function get_floorplan_tables(p_floorplan_id int)
-returns table(id int, name text, x_pct numeric, y_pct numeric) as $$ ...
+-- Single object (mutation, status check, lookup)
+create function get_restaurant() returns jsonb as $$
+	select jsonb_build_object(
+		'name', name,
+		'address', address,
+		'phone', phone
+	)
+	from restaurant
+	where id = 1;
+$$ language sql;
 
--- Zero-or-one rows: lookup that may fail (e.g., invalid credentials)
-create or replace function admin_login(p_name text, p_password text)
-returns table(user_id int, user_name text) as $$ ...
+-- List
+create function get_floorplans() returns jsonb as $$
+	select coalesce(jsonb_agg(jsonb_build_object(
+		'id', id,
+		'name', name,
+		'imagePath', image_path
+	) order by sort_order, id), '[]')
+	from floorplan;
+$$ language sql;
+
+-- Nested structure
+create function get_table_status_for_date(p_date date) returns jsonb as $$
+	with table_reservations as (
+		select floorplan_table_id, jsonb_agg(jsonb_build_object(
+			'id', r.id,
+			'guestName', r.guest_name
+		)) as reservations
+		from reservation r
+		join reservation_table rt on r.id = rt.reservation_id
+		where r.reservation_date = p_date
+		group by floorplan_table_id
+	)
+	select coalesce(jsonb_agg(jsonb_build_object(
+		'id', ft.id,
+		'name', ft.name,
+		'reservations', coalesce(tr.reservations, '[]')
+	)), '[]')
+	from floorplan_table ft
+	left join table_reservations tr on ft.id = tr.floorplan_table_id;
+$$ language sql;
+
+-- Empty result (mutation confirmation)
+create function delete_thing(p_id int) returns jsonb as $$
+	delete from thing where id = p_id
+	returning '{}'::jsonb;
+$$ language sql;
+
+-- Login function (exception: must use returns table for @login)
+create function admin_login(p_username text, p_password text)
+returns table(user_id int, user_name text) as $$
+	select id, username
+	from admin_users
+	where username = p_username
+		and password_hash = crypt(p_password, password_hash);
+$$ language sql;
+-- Returns empty result set if credentials don't match
 ```
 
-Use `returns jsonb` for functions that return a **single object** — mutations, status checks, confirmations, and summary values:
+## JSON key naming
+
+Use camelCase for JSON keys to match JavaScript conventions:
 
 ```sql
--- Mutation returning confirmation
-create or replace function save_restaurant(p_name text, ...) returns jsonb as $$
-	... returning jsonb_build_object('id', id);
-
--- Status check
-create or replace function is_setup() returns jsonb as $$
-	select jsonb_build_object('setup', exists(...));
-
--- Delete confirmation
-create or replace function delete_floorplan_table(p_id int) returns jsonb as $$
-	delete from ... returning jsonb_build_object('id', id);
+jsonb_build_object(
+	'id', id,
+	'guestName', guest_name,      -- not 'guest_name'
+	'reservationDate', reservation_date
+)
 ```
-
-The distinction matters because NpgsqlRest serializes `table(...)` as a JSON array and `jsonb` as a plain object. JavaScript consumes them differently: arrays are iterated/mapped, objects are accessed directly.
 
 ## SQL vs PL/PgSQL
 

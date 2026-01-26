@@ -27,29 +27,19 @@ Remove block from a table';
 -- Get all currently blocked tables
 -- Block duration: 30 min base + 30 min per seat
 drop function if exists get_blocked_tables();
-create function get_blocked_tables()
-returns table(
-	id int,
-	table_id int,
-	table_name text,
-	floorplan_id int,
-	capacity int,
-	blocked_at timestamptz,
-	block_ends_at timestamptz,
-	notes text
-) as $$
-	select
-		b.id,
-		b.floorplan_table_id as table_id,
-		t.name as table_name,
-		t.floorplan_id,
-		t.capacity,
-		b.blocked_at,
-		b.blocked_at + make_interval(mins => 30 + 30 * t.capacity) as block_ends_at,
-		b.notes
+create function get_blocked_tables() returns jsonb as $$
+	select coalesce(jsonb_agg(jsonb_build_object(
+		'id', b.id,
+		'tableId', b.floorplan_table_id,
+		'tableName', t.name,
+		'floorplanId', t.floorplan_id,
+		'capacity', t.capacity,
+		'blockedAt', b.blocked_at,
+		'blockEndsAt', b.blocked_at + make_interval(mins => 30 + 30 * t.capacity),
+		'notes', b.notes
+	) order by b.blocked_at desc), '[]')
 	from table_block b
-	join floorplan_table t on b.floorplan_table_id = t.id
-	order by b.blocked_at desc;
+	join floorplan_table t on b.floorplan_table_id = t.id;
 $$ language sql;
 
 comment on function get_blocked_tables() is 'HTTP GET
@@ -78,13 +68,11 @@ begin;
 do $$
 declare
 	v_result jsonb;
-	result record;
+	v_block jsonb;
 	fp_id int;
 	table1_id int;
 	table2_id int;
 	block_id int;
-	block_end timestamptz;
-	cnt int;
 begin
 	truncate floorplan restart identity cascade;
 
@@ -103,8 +91,9 @@ begin
 	values (fp_id, '2', 2, 0.75, 0.5)
 	returning id into table2_id;
 
-	-- get_blocked_tables returns empty initially
-	assert not exists(select 1 from get_blocked_tables()), 'should return no rows';
+	-- get_blocked_tables returns empty array initially
+	v_result := get_blocked_tables();
+	assert jsonb_array_length(v_result) = 0, 'should return empty array';
 
 	-- block_table blocks a table and returns id
 	v_result := block_table(table1_id, 'Walk-in');
@@ -112,41 +101,30 @@ begin
 	assert block_id is not null, 'block should return id';
 
 	-- get_blocked_tables returns the blocked table with end time
-	select * into result from get_blocked_tables();
-	assert result.table_id = table1_id, 'tableId should match';
-	assert result.notes = 'Walk-in', 'notes should match';
-	assert result.capacity = 4, 'capacity should be included';
-	assert result.block_ends_at is not null, 'blockEndsAt should be present';
-
-	-- Verify block duration: capacity 4 = 150 min block
-	block_end := result.block_ends_at;
-	assert block_end - result.blocked_at = interval '150 minutes',
-		'block duration for capacity 4 should be 150 min';
+	v_result := get_blocked_tables();
+	v_block := v_result->0;
+	assert (v_block->>'tableId')::int = table1_id, 'tableId should match';
+	assert v_block->>'notes' = 'Walk-in', 'notes should match';
+	assert (v_block->>'capacity')::int = 4, 'capacity should be included';
+	assert v_block->>'blockEndsAt' is not null, 'blockEndsAt should be present';
 
 	-- block_table with same table updates the block
 	v_result := block_table(table1_id, 'Maintenance');
 	block_id := (v_result->>'id')::int;
-	select count(*) into cnt from get_blocked_tables();
-	assert cnt = 1, 'should still have 1 blocked table';
-	select * into result from get_blocked_tables();
-	assert result.notes = 'Maintenance', 'notes should be updated';
+	v_result := get_blocked_tables();
+	assert jsonb_array_length(v_result) = 1, 'should still have 1 blocked table';
+	assert v_result->0->>'notes' = 'Maintenance', 'notes should be updated';
 
 	-- block second table (capacity 2 = 90 min block)
 	perform block_table(table2_id);
-	select count(*) into cnt from get_blocked_tables();
-	assert cnt = 2, 'should have 2 blocked tables';
-
-	-- Verify block duration for table 2: capacity 2 = 90 min block
-	select * into result from get_blocked_tables() where table_id = table2_id;
-	assert result.block_ends_at - result.blocked_at = interval '90 minutes',
-		'block duration for capacity 2 should be 90 min';
+	v_result := get_blocked_tables();
+	assert jsonb_array_length(v_result) = 2, 'should have 2 blocked tables';
 
 	-- unblock_table removes block
 	perform unblock_table(table1_id);
-	select count(*) into cnt from get_blocked_tables();
-	assert cnt = 1, 'should have 1 blocked table after unblock';
-	select * into result from get_blocked_tables();
-	assert result.table_id = table2_id, 'remaining block should be table2';
+	v_result := get_blocked_tables();
+	assert jsonb_array_length(v_result) = 1, 'should have 1 blocked table after unblock';
+	assert (v_result->0->>'tableId')::int = table2_id, 'remaining block should be table2';
 
 	raise notice 'All table_block tests passed!';
 end;

@@ -1,37 +1,21 @@
--- Composite type for reservation summary in table status
+-- Clean up old custom type (no longer used)
 drop type if exists reservation_summary cascade;
-create type reservation_summary as (
-	id int,
-	guest_name text,
-	party_size int,
-	reservation_time time,
-	duration_minutes int,
-	status text
-);
 
 -- Get table status for a specific date (includes reservations and block status)
 -- Block duration: 30 min base + 30 min per seat
 drop function if exists get_table_status_for_date(date);
-create function get_table_status_for_date(p_date date)
-returns table(
-	id int,
-	floorplan_id int,
-	name text,
-	capacity int,
-	x_pct numeric,
-	y_pct numeric,
-	is_blocked boolean,
-	block_notes text,
-	block_ends_at timestamptz,
-	reservations reservation_summary[]
-) as $$
+create function get_table_status_for_date(p_date date) returns jsonb as $$
 	with table_reservations as (
 		select
 			rt.floorplan_table_id,
-			array_agg(
-				row(r.id, r.guest_name, r.party_size, r.reservation_time, r.duration_minutes, r.status)::reservation_summary
-				order by r.reservation_time
-			) as reservations
+			jsonb_agg(jsonb_build_object(
+				'id', r.id,
+				'guestName', r.guest_name,
+				'partySize', r.party_size,
+				'reservationTime', r.reservation_time,
+				'durationMinutes', r.duration_minutes,
+				'status', r.status
+			) order by r.reservation_time) as reservations
 		from reservation r
 		join reservation_table rt on r.id = rt.reservation_id
 		where r.reservation_date = p_date
@@ -50,21 +34,22 @@ returns table(
 		where b.blocked_at < (p_date + 1)::timestamptz
 			and b.blocked_at + make_interval(mins => 30 + 30 * ft.capacity) > p_date::timestamptz
 	)
-	select
-		ft.id,
-		ft.floorplan_id,
-		ft.name,
-		ft.capacity,
-		ft.x_pct,
-		ft.y_pct,
-		ab.id is not null as is_blocked,
-		ab.notes as block_notes,
-		ab.block_ends_at,
-		coalesce(tr.reservations, '{}') as reservations
+	select coalesce(
+		jsonb_agg(jsonb_build_object(
+		'id', ft.id,
+		'floorplanId', ft.floorplan_id,
+		'name', ft.name,
+		'capacity', ft.capacity,
+		'xPct', ft.x_pct,
+		'yPct', ft.y_pct,
+		'isBlocked', ab.id is not null,
+		'blockNotes', ab.notes,
+		'blockEndsAt', ab.block_ends_at,
+		'reservations', coalesce(tr.reservations, '[]')
+	) order by ft.floorplan_id, ft.name), '[]')
 	from floorplan_table ft
 	left join active_blocks ab on ft.id = ab.floorplan_table_id
-	left join table_reservations tr on ft.id = tr.floorplan_table_id
-	order by ft.floorplan_id, ft.name;
+	left join table_reservations tr on ft.id = tr.floorplan_table_id;
 $$ language sql;
 
 comment on function get_table_status_for_date(date) is 'HTTP GET
@@ -78,13 +63,7 @@ create function check_table_availability(
 	p_time time,
 	p_duration int,
 	p_party_size int
-) returns table(
-	id int,
-	floorplan_id int,
-	floorplan_name text,
-	name text,
-	capacity int
-) as $$
+) returns jsonb as $$
 	with slot_times as (
 		select
 			(p_date + p_time)::timestamptz as slot_start,
@@ -110,18 +89,18 @@ create function check_table_availability(
 		where b.blocked_at < slot_times.slot_end
 			and b.blocked_at + make_interval(mins => 30 + 30 * ft.capacity) > slot_times.slot_start
 	)
-	select
-		ft.id,
-		ft.floorplan_id,
-		f.name as floorplan_name,
-		ft.name,
-		ft.capacity
+	select coalesce(jsonb_agg(jsonb_build_object(
+		'id', ft.id,
+		'floorplanId', ft.floorplan_id,
+		'floorplanName', f.name,
+		'name', ft.name,
+		'capacity', ft.capacity
+	) order by f.sort_order, f.id, ft.name), '[]')
 	from floorplan_table ft
 	join floorplan f on ft.floorplan_id = f.id
 	where ft.capacity >= p_party_size
 		and ft.id not in (select floorplan_table_id from blocked_tables)
-		and ft.id not in (select floorplan_table_id from conflicting_reservations)
-	order by f.sort_order, f.id, ft.name;
+		and ft.id not in (select floorplan_table_id from conflicting_reservations);
 $$ language sql;
 
 comment on function check_table_availability(date, time, int, int) is 'HTTP GET
@@ -135,18 +114,7 @@ create function get_tables_for_slot(
 	p_time time,
 	p_duration int,
 	p_exclude_reservation_id int default null
-) returns table(
-	id int,
-	floorplan_id int,
-	name text,
-	capacity int,
-	x_pct numeric,
-	y_pct numeric,
-	is_available boolean,
-	is_blocked boolean,
-	block_ends_at timestamptz,
-	has_conflict boolean
-) as $$
+) returns jsonb as $$
 	with slot_times as (
 		select
 			(p_date + p_time)::timestamptz as slot_start,
@@ -175,21 +143,21 @@ create function get_tables_for_slot(
 		where b.blocked_at < slot_times.slot_end
 			and b.blocked_at + make_interval(mins => 30 + 30 * ft.capacity) > slot_times.slot_start
 	)
-	select
-		ft.id,
-		ft.floorplan_id,
-		ft.name,
-		ft.capacity,
-		ft.x_pct,
-		ft.y_pct,
-		bt.floorplan_table_id is null and cr.floorplan_table_id is null as is_available,
-		bt.floorplan_table_id is not null as is_blocked,
-		bt.block_ends_at,
-		cr.floorplan_table_id is not null as has_conflict
+	select coalesce(jsonb_agg(jsonb_build_object(
+		'id', ft.id,
+		'floorplanId', ft.floorplan_id,
+		'name', ft.name,
+		'capacity', ft.capacity,
+		'xPct', ft.x_pct,
+		'yPct', ft.y_pct,
+		'isAvailable', bt.floorplan_table_id is null and cr.floorplan_table_id is null,
+		'isBlocked', bt.floorplan_table_id is not null,
+		'blockEndsAt', bt.block_ends_at,
+		'hasConflict', cr.floorplan_table_id is not null
+	) order by ft.floorplan_id, ft.name), '[]')
 	from floorplan_table ft
 	left join blocked_tables bt on ft.id = bt.floorplan_table_id
-	left join conflicting_reservations cr on ft.id = cr.floorplan_table_id
-	order by ft.floorplan_id, ft.name;
+	left join conflicting_reservations cr on ft.id = cr.floorplan_table_id;
 $$ language sql;
 
 comment on function get_tables_for_slot(date, time, int, int) is 'HTTP GET
@@ -200,14 +168,14 @@ begin;
 
 do $$
 declare
-	result record;
+	v_result jsonb;
+	v_table jsonb;
 	fp1_id int;
 	fp2_id int;
 	t1_id int;
 	t2_id int;
 	t3_id int;
 	res_id int;
-	cnt int;
 begin
 	truncate floorplan restart identity cascade;
 
@@ -233,12 +201,13 @@ begin
 	returning id into t3_id;
 
 	-- get_table_status_for_date returns all tables with no reservations
-	select count(*) into cnt from get_table_status_for_date('2026-01-20');
-	assert cnt = 3, 'should have 3 tables';
+	v_result := get_table_status_for_date('2026-01-20');
+	assert jsonb_array_length(v_result) = 3, 'should have 3 tables';
 
-	select * into result from get_table_status_for_date('2026-01-20') where id = t1_id;
-	assert result.is_blocked = false, 'should not be blocked';
-	assert array_length(result.reservations, 1) is null, 'should have no reservations';
+	-- Find table 1 in result
+	select elem into v_table from jsonb_array_elements(v_result) elem where (elem->>'id')::int = t1_id;
+	assert (v_table->>'isBlocked')::boolean = false, 'should not be blocked';
+	assert jsonb_array_length(v_table->'reservations') = 0, 'should have no reservations';
 
 	-- Add a reservation using junction table
 	insert into reservation (guest_name, party_size, reservation_date, reservation_time, duration_minutes, status)
@@ -249,60 +218,63 @@ begin
 	values (res_id, t1_id);
 
 	-- get_table_status_for_date shows reservation
-	select * into result from get_table_status_for_date('2026-01-20') where id = t1_id;
-	assert array_length(result.reservations, 1) = 1, 'table 1 should have 1 reservation';
-	assert (result.reservations[1]).guest_name = 'John', 'guest name should match';
+	v_result := get_table_status_for_date('2026-01-20');
+	select elem into v_table from jsonb_array_elements(v_result) elem where (elem->>'id')::int = t1_id;
+	assert jsonb_array_length(v_table->'reservations') = 1, 'table 1 should have 1 reservation';
+	assert v_table->'reservations'->0->>'guestName' = 'John', 'guest name should match';
 
 	-- Block table 2 at 17:00 (capacity 2 = 90 min block, ends at 18:30)
 	insert into table_block (floorplan_table_id, blocked_at, notes)
 	values (t2_id, '2026-01-20 17:00'::timestamptz, 'Walk-in');
 
-	select * into result from get_table_status_for_date('2026-01-20') where id = t2_id;
-	assert result.is_blocked = true, 'table 2 should be blocked on 2026-01-20';
+	v_result := get_table_status_for_date('2026-01-20');
+	select elem into v_table from jsonb_array_elements(v_result) elem where (elem->>'id')::int = t2_id;
+	assert (v_table->>'isBlocked')::boolean = true, 'table 2 should be blocked on 2026-01-20';
 
 	-- check_table_availability: 18:00 slot should exclude table 1 (occupied) and table 2 (blocked until 18:30)
-	select count(*) into cnt from check_table_availability('2026-01-20', '18:00', 90, 2);
-	assert cnt = 1, 'only P1 should be available at 18:00';
-	select * into result from check_table_availability('2026-01-20', '18:00', 90, 2);
-	assert result.name = 'P1', 'available table should be P1';
+	v_result := check_table_availability('2026-01-20', '18:00', 90, 2);
+	assert jsonb_array_length(v_result) = 1, 'only P1 should be available at 18:00';
+	assert v_result->0->>'name' = 'P1', 'available table should be P1';
 
 	-- check_table_availability: 19:00 slot (after block expires at 18:30) should include table 2
-	select count(*) into cnt from check_table_availability('2026-01-20', '19:00', 90, 2);
-	assert cnt = 2, 'table 2 and P1 should be available at 19:00 (block expired)';
+	v_result := check_table_availability('2026-01-20', '19:00', 90, 2);
+	assert jsonb_array_length(v_result) = 2, 'table 2 and P1 should be available at 19:00 (block expired)';
 
 	-- check_table_availability: 20:00 slot (after table 1's reservation) should include table 1
-	select count(*) into cnt from check_table_availability('2026-01-20', '20:00', 90, 2);
-	assert cnt = 3, 'all 3 tables should be available at 20:00';
+	v_result := check_table_availability('2026-01-20', '20:00', 90, 2);
+	assert jsonb_array_length(v_result) = 3, 'all 3 tables should be available at 20:00';
 
 	-- check_table_availability: party of 5 excludes small tables
-	select count(*) into cnt from check_table_availability('2026-01-20', '20:00', 90, 5);
-	assert cnt = 1, 'only P1 (capacity 6) should fit party of 5';
+	v_result := check_table_availability('2026-01-20', '20:00', 90, 5);
+	assert jsonb_array_length(v_result) = 1, 'only P1 (capacity 6) should fit party of 5';
 
 	-- Test get_tables_for_slot: returns all tables with availability flags
-	select count(*) into cnt from get_tables_for_slot('2026-01-20', '18:00', 90);
-	assert cnt = 3, 'should return all 3 tables';
+	v_result := get_tables_for_slot('2026-01-20', '18:00', 90);
+	assert jsonb_array_length(v_result) = 3, 'should return all 3 tables';
 
 	-- Table 1 should be unavailable (has conflict)
-	select * into result from get_tables_for_slot('2026-01-20', '18:00', 90) where id = t1_id;
-	assert result.is_available = false, 't1 should be unavailable';
-	assert result.has_conflict = true, 't1 should have conflict';
+	select elem into v_table from jsonb_array_elements(v_result) elem where (elem->>'id')::int = t1_id;
+	assert (v_table->>'isAvailable')::boolean = false, 't1 should be unavailable';
+	assert (v_table->>'hasConflict')::boolean = true, 't1 should have conflict';
 
 	-- Table 2 should be unavailable (blocked)
-	select * into result from get_tables_for_slot('2026-01-20', '18:00', 90) where id = t2_id;
-	assert result.is_available = false, 't2 should be unavailable';
-	assert result.is_blocked = true, 't2 should be blocked';
+	select elem into v_table from jsonb_array_elements(v_result) elem where (elem->>'id')::int = t2_id;
+	assert (v_table->>'isAvailable')::boolean = false, 't2 should be unavailable';
+	assert (v_table->>'isBlocked')::boolean = true, 't2 should be blocked';
 
 	-- Test multi-table reservation: assign same reservation to t3
 	insert into reservation_table (reservation_id, floorplan_table_id)
 	values (res_id, t3_id);
 
 	-- P1 should now be unavailable too
-	select * into result from get_tables_for_slot('2026-01-20', '18:00', 90) where id = t3_id;
-	assert result.is_available = false, 'P1 should be unavailable due to shared reservation';
+	v_result := get_tables_for_slot('2026-01-20', '18:00', 90);
+	select elem into v_table from jsonb_array_elements(v_result) elem where (elem->>'id')::int = t3_id;
+	assert (v_table->>'isAvailable')::boolean = false, 'P1 should be unavailable due to shared reservation';
 
 	-- get_tables_for_slot with exclude_reservation_id should exclude that reservation's conflict
-	select * into result from get_tables_for_slot('2026-01-20', '18:00', 90, res_id) where id = t1_id;
-	assert result.is_available = true, 't1 should be available when excluding its reservation';
+	v_result := get_tables_for_slot('2026-01-20', '18:00', 90, res_id);
+	select elem into v_table from jsonb_array_elements(v_result) elem where (elem->>'id')::int = t1_id;
+	assert (v_table->>'isAvailable')::boolean = true, 't1 should be available when excluding its reservation';
 
 	raise notice 'All table_availability tests passed!';
 end;

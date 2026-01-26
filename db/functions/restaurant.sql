@@ -9,9 +9,13 @@ Check if restaurant settings have been configured';
 
 -- Get restaurant info
 drop function if exists get_restaurant();
-create function get_restaurant()
-returns table(name text, address text, phone text, working_hours jsonb) as $$
-	select name, address, phone, working_hours
+create function get_restaurant() returns jsonb as $$
+	select jsonb_build_object(
+		'name', name,
+		'address', address,
+		'phone', phone,
+		'workingHours', working_hours
+	)
 	from restaurant
 	where id = 1;
 $$ language sql;
@@ -46,7 +50,6 @@ begin;
 
 do $$
 declare
-	result record;
 	v_result jsonb;
 begin
 	truncate restaurant cascade;
@@ -55,8 +58,9 @@ begin
 	v_result := is_restaurant_configured();
 	assert (v_result->>'configured')::boolean = false, 'configured should be false when no restaurant exists';
 
-	-- get_restaurant returns no rows when no restaurant
-	assert not exists(select 1 from get_restaurant()), 'get_restaurant should return no rows when no restaurant exists';
+	-- get_restaurant returns null when no restaurant
+	v_result := get_restaurant();
+	assert v_result is null, 'get_restaurant should return null when no restaurant exists';
 
 	-- save_restaurant creates restaurant
 	perform save_restaurant('Test Restaurant', '123 Main St', '555-1234', '{"monday": {"open": "09:00", "close": "17:00"}}');
@@ -64,18 +68,18 @@ begin
 	assert (v_result->>'configured')::boolean = true, 'configured should be true after save';
 
 	-- get_restaurant returns saved data
-	select * into result from get_restaurant();
-	assert result.name = 'Test Restaurant', 'name should match';
-	assert result.address = '123 Main St', 'address should match';
-	assert result.phone = '555-1234', 'phone should match';
-	assert result.working_hours->'monday'->>'open' = '09:00', 'working hours should match';
+	v_result := get_restaurant();
+	assert v_result->>'name' = 'Test Restaurant', 'name should match';
+	assert v_result->>'address' = '123 Main St', 'address should match';
+	assert v_result->>'phone' = '555-1234', 'phone should match';
+	assert v_result->'workingHours'->'monday'->>'open' = '09:00', 'working hours should match';
 
 	-- save_restaurant updates existing restaurant
 	perform save_restaurant('Updated Restaurant', '456 Oak Ave', '555-5678', '{}');
 	assert (select count(*) from restaurant) = 1, 'should still have only 1 restaurant';
-	select * into result from get_restaurant();
-	assert result.name = 'Updated Restaurant', 'name should be updated';
-	assert result.address = '456 Oak Ave', 'address should be updated';
+	v_result := get_restaurant();
+	assert v_result->>'name' = 'Updated Restaurant', 'name should be updated';
+	assert v_result->>'address' = '456 Oak Ave', 'address should be updated';
 
 	raise notice 'All restaurant tests passed!';
 end;
