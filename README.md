@@ -65,6 +65,36 @@ The technology stack comprises of:
 - dbmate - database migration tool
 - Vanilla frontend
 
+## Rate Limiting
+
+The API uses NpgsqlRest's built-in rate limiter to prevent abuse. Configuration is in `default.json` under `RateLimiterOptions`.
+
+### Policies
+
+| Policy | Limit | Applies to |
+|--------|-------|------------|
+| `standard` | 60 req/min | All endpoints (default) |
+| `auth` | 10 req/min | Login and setup endpoints |
+
+When the limit is exceeded, the API returns HTTP 429 with "Too many requests".
+
+### Adding Rate Limits to Endpoints
+
+Apply a policy to a function using the `@rate_limiter_policy` annotation in its SQL comment:
+
+```sql
+comment on function admin_login(text, text) is 'HTTP POST
+@login
+@rate_limiter_policy auth
+Authenticate admin user';
+```
+
+### Testing
+
+```bash
+limactl shell mytable ./test-rate-limit.sh [url] [requests]
+```
+
 ## Development Setup
 
 ### Lima VM Setup (macOS)

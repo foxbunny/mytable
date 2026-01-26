@@ -24,6 +24,7 @@ end;
 $$ language plpgsql;
 
 comment on function setup_admin(text, text) is 'HTTP POST
+@rate_limiter_policy auth
 Set up the initial admin account. Only works if no admin exists.';
 
 -- Admin login (returns row on success, empty on failure)
@@ -41,6 +42,7 @@ $$ language sql;
 
 comment on function admin_login(text, text) is 'HTTP POST
 @login
+@rate_limiter_policy auth
 Authenticate admin user';
 
 -- Check if current session is authenticated

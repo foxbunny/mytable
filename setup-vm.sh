@@ -90,6 +90,16 @@ else
     echo "dbmate installed successfully"
 fi
 
+# Install ab (Apache Bench) for load testing if not already installed
+echo ""
+if command -v ab &> /dev/null; then
+    echo "ab (Apache Bench) already installed"
+else
+    echo "Installing ab (Apache Bench)..."
+    sudo apt-get install -y apache2-utils |& log
+    echo "ab installed successfully"
+fi
+
 # Install PostgreSQL 18 if not already installed
 echo ""
 if command -v psql &> /dev/null && psql --version | grep -q "18"; then
@@ -201,6 +211,7 @@ echo ""
 echo "Installed Tools:"
 echo "  NpgsqlRest: $NPGSQLREST_BIN"
 echo "  dbmate: $DBMATE_BIN"
+echo "  ab: $(which ab 2>/dev/null || echo 'Not found')"
 echo "  PostgreSQL: $(psql --version 2>/dev/null || echo 'Not found')"
 echo ""
 echo "PostgreSQL Service:"

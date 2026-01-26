@@ -1,4 +1,30 @@
 {
+  "RateLimiterOptions": {
+    "Enabled": true,
+    "StatusCode": 429,
+    "StatusMessage": "Too many requests. Please try again later.",
+    "DefaultPolicy": "standard",
+    "Policies": [
+      {
+        "Type": "FixedWindow",
+        "Enabled": true,
+        "Name": "standard",
+        "PermitLimit": 60,
+        "WindowSeconds": 60,
+        "QueueLimit": 0,
+        "AutoReplenishment": true
+      },
+      {
+        "Type": "FixedWindow",
+        "Enabled": true,
+        "Name": "auth",
+        "PermitLimit": 10,
+        "WindowSeconds": 60,
+        "QueueLimit": 0,
+        "AutoReplenishment": true
+      }
+    ]
+  },
   "Auth": {
     "CookieAuth": true,
     "CookieValidDays": 14,
