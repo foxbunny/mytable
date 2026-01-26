@@ -1,6 +1,6 @@
 drop function if exists echo(text);
-create function echo(p_message text) returns jsonb as $$
-select jsonb_build_object('message', p_message);
+create function echo(p_message text) returns echo_result as $$
+select row(p_message)::echo_result;
 $$ language sql;
 
 comment on function echo(text) is 'HTTP

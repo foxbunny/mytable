@@ -10,7 +10,7 @@ create function customer_create_reservation(
 	p_guest_email text default null,
 	p_notes text default null,
 	p_channel_id text default null
-) returns jsonb as $$
+) returns customer_reservation_result as $$
 declare
 	v_reservation_id int;
 	v_token text;
@@ -43,7 +43,7 @@ begin
 		'reservationTime', p_reservation_time
 	);
 
-	return jsonb_build_object('reservationId', v_reservation_id, 'sessionToken', v_token);
+	return row(v_reservation_id, v_token)::customer_reservation_result;
 end;
 $$ language plpgsql;
 
@@ -53,7 +53,7 @@ Create a new reservation from customer portal';
 
 -- Get customer notification status (polling fallback)
 drop function if exists get_customer_notification(text);
-create function get_customer_notification(p_token text) returns jsonb as $$
+create function get_customer_notification(p_token text) returns customer_notification_result as $$
 declare
 	v_session record;
 	v_reservation record;
@@ -82,26 +82,26 @@ begin
 	limit 1;
 
 	if v_notification is not null then
-		return jsonb_build_object(
-			'code', v_notification.code,
-			'adminMessage', v_notification.admin_message,
-			'reservationStatus', v_reservation.status,
-			'reservationDate', v_reservation.reservation_date,
-			'reservationTime', v_reservation.reservation_time,
-			'partySize', v_reservation.party_size,
-			'guestName', v_reservation.guest_name
-		);
+		return row(
+			v_notification.code,
+			v_notification.admin_message,
+			v_reservation.status,
+			v_reservation.reservation_date,
+			v_reservation.reservation_time,
+			v_reservation.party_size,
+			v_reservation.guest_name
+		)::customer_notification_result;
 	else
 		-- Return current status without notification code
-		return jsonb_build_object(
-			'code', null,
-			'adminMessage', null,
-			'reservationStatus', v_reservation.status,
-			'reservationDate', v_reservation.reservation_date,
-			'reservationTime', v_reservation.reservation_time,
-			'partySize', v_reservation.party_size,
-			'guestName', v_reservation.guest_name
-		);
+		return row(
+			null,
+			null,
+			v_reservation.status,
+			v_reservation.reservation_date,
+			v_reservation.reservation_time,
+			v_reservation.party_size,
+			v_reservation.guest_name
+		)::customer_notification_result;
 	end if;
 end;
 $$ language plpgsql;
@@ -111,7 +111,7 @@ Get notification status for customer reservation';
 
 -- Mark notification as delivered
 drop function if exists mark_notification_delivered(text);
-create function mark_notification_delivered(p_token text) returns jsonb as $$
+create function mark_notification_delivered(p_token text) returns void as $$
 declare
 	v_session record;
 begin
@@ -121,7 +121,7 @@ begin
 	where cs.token = p_token and cs.expires_at > now();
 
 	if v_session is null then
-		return jsonb_build_object('error', 'INVALID_SESSION: Invalid or expired session');
+		raise exception 'INVALID_SESSION: Invalid or expired session';
 	end if;
 
 	-- Mark notifications as delivered
@@ -129,8 +129,6 @@ begin
 	set delivered = true
 	where reservation_id = v_session.reservation_id
 		and not delivered;
-
-	return '{}'::jsonb;
 end;
 $$ language plpgsql;
 
@@ -146,7 +144,7 @@ create function resolve_reservation(
 	p_status text,
 	p_admin_message text default null,
 	p_table_ids int[] default null
-) returns jsonb as $$
+) returns void as $$
 declare
 	v_token text;
 	v_code text;
@@ -183,8 +181,6 @@ begin
 			'adminMessage', p_admin_message
 		);
 	end if;
-
-	return '{}'::jsonb;
 end;
 $$ language plpgsql;
 
@@ -195,19 +191,19 @@ Resolve a reservation (confirm or decline) and notify customer';
 
 -- Get new pending reservations since a given timestamp (for admin polling)
 drop function if exists get_new_pending_reservations(timestamptz);
-create function get_new_pending_reservations(p_since timestamptz default null) returns jsonb as $$
-	select coalesce(jsonb_agg(jsonb_build_object(
-		'id', r.id,
-		'guestName', r.guest_name,
-		'partySize', r.party_size,
-		'reservationDate', r.reservation_date,
-		'reservationTime', r.reservation_time,
-		'createdAt', r.created_at
-	) order by r.created_at desc), '[]')
+create function get_new_pending_reservations(p_since timestamptz default null) returns setof new_pending_info as $$
+	select
+		r.id,
+		r.guest_name,
+		r.party_size,
+		r.reservation_date,
+		r.reservation_time,
+		r.created_at
 	from reservation r
 	where r.status = 'pending'
 		and r.source = 'online'
-		and (p_since is null or r.created_at > p_since);
+		and (p_since is null or r.created_at > p_since)
+	order by r.created_at desc;
 $$ language sql;
 
 comment on function get_new_pending_reservations(timestamptz) is 'HTTP GET

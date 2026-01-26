@@ -30,6 +30,331 @@ COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 
 
 --
+-- Name: auth_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.auth_result AS (
+	authenticated boolean
+);
+
+
+--
+-- Name: customer_notification_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.customer_notification_result AS (
+	code text,
+	admin_message text,
+	reservation_status text,
+	reservation_date date,
+	reservation_time time without time zone,
+	party_size integer,
+	guest_name text
+);
+
+
+--
+-- Name: customer_reservation_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.customer_reservation_result AS (
+	reservation_id integer,
+	session_token text
+);
+
+
+--
+-- Name: echo_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.echo_result AS (
+	message text
+);
+
+
+--
+-- Name: floorplan_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.floorplan_info AS (
+	id integer,
+	name text,
+	image_path text,
+	image_width integer,
+	image_height integer,
+	sort_order integer
+);
+
+
+--
+-- Name: floorplan_save_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.floorplan_save_result AS (
+	id integer
+);
+
+
+--
+-- Name: floorplan_table_delete_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.floorplan_table_delete_result AS (
+	id integer
+);
+
+
+--
+-- Name: floorplan_table_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.floorplan_table_info AS (
+	id integer,
+	floorplan_id integer,
+	name text,
+	capacity integer,
+	notes text,
+	x_pct numeric,
+	y_pct numeric
+);
+
+
+--
+-- Name: floorplan_table_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.floorplan_table_result AS (
+	id integer,
+	name text,
+	capacity integer,
+	notes text,
+	x_pct numeric,
+	y_pct numeric
+);
+
+
+--
+-- Name: floorplan_upload_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.floorplan_upload_result AS (
+	path text
+);
+
+
+--
+-- Name: new_pending_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.new_pending_info AS (
+	id integer,
+	guest_name text,
+	party_size integer,
+	reservation_date date,
+	reservation_time time without time zone,
+	created_at timestamp with time zone
+);
+
+
+--
+-- Name: pending_count_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.pending_count_result AS (
+	count integer
+);
+
+
+--
+-- Name: pending_reservation_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.pending_reservation_info AS (
+	id integer,
+	guest_name text,
+	guest_phone text,
+	guest_email text,
+	party_size integer,
+	reservation_date date,
+	reservation_time time without time zone,
+	duration_minutes integer,
+	table_ids jsonb,
+	table_names jsonb,
+	notes text,
+	created_at timestamp with time zone
+);
+
+
+--
+-- Name: reservation_create_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.reservation_create_result AS (
+	id integer,
+	status text
+);
+
+
+--
+-- Name: reservation_id_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.reservation_id_result AS (
+	id integer
+);
+
+
+--
+-- Name: reservation_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.reservation_info AS (
+	id integer,
+	guest_name text,
+	guest_phone text,
+	guest_email text,
+	party_size integer,
+	reservation_date date,
+	reservation_time time without time zone,
+	duration_minutes integer,
+	table_ids jsonb,
+	table_names jsonb,
+	status text,
+	source text,
+	notes text,
+	created_at timestamp with time zone
+);
+
+
+--
+-- Name: reservation_update_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.reservation_update_result AS (
+	id integer,
+	status text
+);
+
+
+--
+-- Name: restaurant_configured_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.restaurant_configured_result AS (
+	configured boolean
+);
+
+
+--
+-- Name: restaurant_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.restaurant_info AS (
+	name text,
+	address text,
+	phone text,
+	working_hours jsonb
+);
+
+
+--
+-- Name: setup_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.setup_result AS (
+	setup boolean
+);
+
+
+--
+-- Name: table_availability_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.table_availability_info AS (
+	id integer,
+	floorplan_id integer,
+	floorplan_name text,
+	name text,
+	capacity integer
+);
+
+
+--
+-- Name: table_block_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.table_block_info AS (
+	id integer,
+	table_id integer,
+	table_name text,
+	floorplan_id integer,
+	capacity integer,
+	blocked_at timestamp with time zone,
+	block_ends_at timestamp with time zone,
+	notes text
+);
+
+
+--
+-- Name: table_block_result; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.table_block_result AS (
+	id integer
+);
+
+
+--
+-- Name: table_reservation_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.table_reservation_info AS (
+	id integer,
+	guest_name text,
+	party_size integer,
+	reservation_time time without time zone,
+	duration_minutes integer,
+	status text
+);
+
+
+--
+-- Name: table_slot_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.table_slot_info AS (
+	id integer,
+	floorplan_id integer,
+	name text,
+	capacity integer,
+	x_pct numeric,
+	y_pct numeric,
+	is_available boolean,
+	is_blocked boolean,
+	block_ends_at timestamp with time zone,
+	has_conflict boolean
+);
+
+
+--
+-- Name: table_status_info; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.table_status_info AS (
+	id integer,
+	floorplan_id integer,
+	name text,
+	capacity integer,
+	x_pct numeric,
+	y_pct numeric,
+	is_blocked boolean,
+	block_notes text,
+	block_ends_at timestamp with time zone,
+	reservations jsonb
+);
+
+
+--
 -- Name: admin_login(text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -50,6 +375,27 @@ $$;
 COMMENT ON FUNCTION public.admin_login(p_username text, p_password text) IS 'HTTP POST
 @login
 Authenticate admin user';
+
+
+--
+-- Name: admin_logout(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.admin_logout() RETURNS text
+    LANGUAGE sql
+    AS $$
+	select 'Cookies'::text;
+$$;
+
+
+--
+-- Name: FUNCTION admin_logout(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.admin_logout() IS 'HTTP POST
+@logout
+@authorize
+Sign out the current admin session';
 
 
 --
@@ -1850,4 +2196,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260118123020'),
     ('20260119193812'),
     ('20260122100000'),
-    ('20260124233127');
+    ('20260124233127'),
+    ('20260126073500');

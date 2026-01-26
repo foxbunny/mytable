@@ -1,17 +1,10 @@
 -- Get all tables for a floorplan
 drop function if exists get_floorplan_tables(int);
-create function get_floorplan_tables(p_floorplan_id int) returns jsonb as $$
-	select coalesce(jsonb_agg(jsonb_build_object(
-		'id', id,
-		'floorplanId', floorplan_id,
-		'name', name,
-		'capacity', capacity,
-		'notes', notes,
-		'xPct', x_pct,
-		'yPct', y_pct
-	) order by created_at, id), '[]')
+create function get_floorplan_tables(p_floorplan_id int) returns setof floorplan_table_info as $$
+	select id, floorplan_id, name, capacity, notes, x_pct, y_pct
 	from floorplan_table
-	where floorplan_id = p_floorplan_id;
+	where floorplan_id = p_floorplan_id
+	order by created_at, id;
 $$ language sql;
 
 comment on function get_floorplan_tables(int) is 'HTTP GET
@@ -26,7 +19,7 @@ create function save_floorplan_table(
 	p_name text default null,
 	p_capacity int default 4,
 	p_notes text default null
-) returns jsonb as $$
+) returns floorplan_table_result as $$
 declare
 	v_name text;
 	v_max_num int;
@@ -49,14 +42,7 @@ begin
 	values (p_floorplan_id, v_name, p_capacity, p_notes, p_x_pct, p_y_pct)
 	returning id into v_id;
 
-	return jsonb_build_object(
-		'id', v_id,
-		'name', v_name,
-		'capacity', p_capacity,
-		'notes', p_notes,
-		'xPct', p_x_pct,
-		'yPct', p_y_pct
-	);
+	return row(v_id, v_name, p_capacity, p_notes, p_x_pct, p_y_pct)::floorplan_table_result;
 end;
 $$ language plpgsql;
 
@@ -73,7 +59,7 @@ create function update_floorplan_table(
 	p_notes text default null,
 	p_x_pct numeric default null,
 	p_y_pct numeric default null
-) returns jsonb as $$
+) returns floorplan_table_result as $$
 	update floorplan_table
 	set
 		name = coalesce(p_name, floorplan_table.name),
@@ -82,14 +68,7 @@ create function update_floorplan_table(
 		x_pct = coalesce(p_x_pct, floorplan_table.x_pct),
 		y_pct = coalesce(p_y_pct, floorplan_table.y_pct)
 	where floorplan_table.id = p_id
-	returning jsonb_build_object(
-		'id', floorplan_table.id,
-		'name', floorplan_table.name,
-		'capacity', floorplan_table.capacity,
-		'notes', floorplan_table.notes,
-		'xPct', floorplan_table.x_pct,
-		'yPct', floorplan_table.y_pct
-	);
+	returning row(id, name, capacity, notes, x_pct, y_pct)::floorplan_table_result;
 $$ language sql;
 
 comment on function update_floorplan_table(int, text, int, text, numeric, numeric) is 'HTTP POST
@@ -98,9 +77,9 @@ Update a floorplan table';
 
 -- Delete a table
 drop function if exists delete_floorplan_table(int);
-create function delete_floorplan_table(p_id int) returns jsonb as $$
+create function delete_floorplan_table(p_id int) returns floorplan_table_delete_result as $$
 	delete from floorplan_table where id = p_id
-	returning jsonb_build_object('id', id);
+	returning row(id)::floorplan_table_delete_result;
 $$ language sql;
 
 comment on function delete_floorplan_table(int) is 'HTTP POST
@@ -112,7 +91,10 @@ begin;
 
 do $$
 declare
-	v_result jsonb;
+	v_result floorplan_table_result;
+	v_delete_result floorplan_table_delete_result;
+	v_info floorplan_table_info;
+	v_list floorplan_table_info[];
 	fp_id int;
 	table_id int;
 begin
@@ -123,47 +105,47 @@ begin
 	values ('Test Floor', '/test.png', 800, 600, 0)
 	returning id into fp_id;
 
-	-- get_floorplan_tables returns empty array when no tables
-	v_result := get_floorplan_tables(fp_id);
-	assert jsonb_array_length(v_result) = 0, 'get_floorplan_tables should return empty array';
+	-- get_floorplan_tables returns empty set when no tables
+	select array_agg(t) into v_list from get_floorplan_tables(fp_id) t;
+	assert v_list is null, 'get_floorplan_tables should return empty set';
 
 	-- save_floorplan_table auto-generates name
 	v_result := save_floorplan_table(fp_id, 0.25, 0.50);
-	assert v_result->>'name' = '1', 'first table should be named 1';
-	table_id := (v_result->>'id')::int;
+	assert v_result.name = '1', 'first table should be named 1';
+	table_id := v_result.id;
 
 	-- second table should be named 2
 	v_result := save_floorplan_table(fp_id, 0.50, 0.50);
-	assert v_result->>'name' = '2', 'second table should be named 2';
+	assert v_result.name = '2', 'second table should be named 2';
 
 	-- custom name works
 	v_result := save_floorplan_table(fp_id, 0.75, 0.50, 'VIP');
-	assert v_result->>'name' = 'VIP', 'custom name should be preserved';
+	assert v_result.name = 'VIP', 'custom name should be preserved';
 
 	-- next auto-name continues from 2
 	v_result := save_floorplan_table(fp_id, 0.25, 0.75);
-	assert v_result->>'name' = '3', 'should continue numbering from highest numeric';
+	assert v_result.name = '3', 'should continue numbering from highest numeric';
 
 	-- get_floorplan_tables returns all tables
-	v_result := get_floorplan_tables(fp_id);
-	assert jsonb_array_length(v_result) = 4, 'should have 4 tables';
+	select array_agg(t) into v_list from get_floorplan_tables(fp_id) t;
+	assert array_length(v_list, 1) = 4, 'should have 4 tables';
 
 	-- update_floorplan_table updates fields
 	v_result := update_floorplan_table(table_id, 'Table A', 4, 'Near window');
-	assert v_result->>'name' = 'Table A', 'name should be updated';
-	assert (v_result->>'capacity')::int = 4, 'capacity should be updated';
-	assert v_result->>'notes' = 'Near window', 'notes should be updated';
+	assert v_result.name = 'Table A', 'name should be updated';
+	assert v_result.capacity = 4, 'capacity should be updated';
+	assert v_result.notes = 'Near window', 'notes should be updated';
 
 	-- update_floorplan_table partial update (position only)
 	v_result := update_floorplan_table(table_id, null, null, null, 0.30, 0.55);
-	assert (v_result->>'xPct')::numeric = 0.30, 'x should be updated';
-	assert (v_result->>'yPct')::numeric = 0.55, 'y should be updated';
-	assert v_result->>'name' = 'Table A', 'name should remain unchanged';
+	assert v_result.x_pct = 0.30, 'x should be updated';
+	assert v_result.y_pct = 0.55, 'y should be updated';
+	assert v_result.name = 'Table A', 'name should remain unchanged';
 
 	-- delete_floorplan_table removes table
-	perform delete_floorplan_table(table_id);
-	v_result := get_floorplan_tables(fp_id);
-	assert jsonb_array_length(v_result) = 3, 'should have 3 tables after delete';
+	v_delete_result := delete_floorplan_table(table_id);
+	select array_agg(t) into v_list from get_floorplan_tables(fp_id) t;
+	assert array_length(v_list, 1) = 3, 'should have 3 tables after delete';
 
 	raise notice 'All floorplan_table tests passed!';
 end;

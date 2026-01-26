@@ -1,7 +1,7 @@
 -- Check if system is set up (has at least one admin)
 drop function if exists is_setup();
-create function is_setup() returns jsonb as $$
-	select jsonb_build_object('setup', exists(select 1 from admin_users));
+create function is_setup() returns setup_result as $$
+	select row(exists(select 1 from admin_users))::setup_result;
 $$ language sql;
 
 comment on function is_setup() is 'HTTP GET
@@ -12,16 +12,14 @@ drop function if exists setup_admin(text, text);
 create function setup_admin(
 	p_username text,
 	p_password text
-) returns jsonb as $$
+) returns void as $$
 begin
 	if exists(select 1 from admin_users) then
-		return jsonb_build_object('error', 'ALREADY_SETUP: System is already set up');
+		raise exception 'ALREADY_SETUP: System is already set up';
 	end if;
 
 	insert into admin_users (username, password_hash)
 	values (p_username, crypt(p_password, gen_salt('bf')));
-
-	return '{}'::jsonb;
 end;
 $$ language plpgsql;
 
@@ -47,8 +45,8 @@ Authenticate admin user';
 
 -- Check if current session is authenticated
 drop function if exists is_authenticated();
-create function is_authenticated() returns jsonb as $$
-	select jsonb_build_object('authenticated', true);
+create function is_authenticated() returns auth_result as $$
+	select row(true)::auth_result;
 $$ language sql;
 
 comment on function is_authenticated() is 'HTTP GET
@@ -71,31 +69,35 @@ begin;
 
 do $$
 declare
-	v_result jsonb;
+	v_setup setup_result;
+	v_auth auth_result;
 	v_login record;
 begin
 	truncate admin_users restart identity cascade;
 
-	-- is_setup returns {setup: false} when no admin
-	v_result := is_setup();
-	assert (v_result->>'setup')::boolean = false, 'setup should be false when no admin exists';
+	-- is_setup returns (false) when no admin
+	v_setup := is_setup();
+	assert v_setup.setup = false, 'setup should be false when no admin exists';
 
-	-- is_setup returns {setup: true} when admin exists
+	-- is_setup returns (true) when admin exists
 	insert into admin_users (username, password_hash) values ('admin', 'hash');
-	v_result := is_setup();
-	assert (v_result->>'setup')::boolean = true, 'setup should be true when admin exists';
+	v_setup := is_setup();
+	assert v_setup.setup = true, 'setup should be true when admin exists';
 
 	-- setup_admin creates first admin
 	truncate admin_users restart identity cascade;
-	v_result := setup_admin('testadmin', 'testpass');
-	assert v_result->>'error' is null, 'should not return error';
+	perform setup_admin('testadmin', 'testpass');
 	assert (select count(*) from admin_users) = 1, 'should have 1 admin';
 	assert (select username from admin_users limit 1) = 'testadmin', 'username should match';
 	assert (select password_hash from admin_users limit 1) like '$2a$%', 'password should be bcrypt hashed';
 
-	-- setup_admin returns error when admin exists
-	v_result := setup_admin('hacker', 'evil');
-	assert v_result->>'error' like 'ALREADY_SETUP:%', 'should return ALREADY_SETUP error';
+	-- setup_admin raises error when admin exists
+	begin
+		perform setup_admin('hacker', 'evil');
+		assert false, 'should have raised exception';
+	exception when others then
+		assert sqlerrm like 'ALREADY_SETUP:%', 'should raise ALREADY_SETUP error';
+	end;
 	assert (select count(*) from admin_users) = 1, 'should still have only 1 admin';
 
 	-- admin_login succeeds with correct credentials
@@ -111,9 +113,9 @@ begin
 	-- admin_login returns no rows with non-existent user
 	assert not exists(select 1 from admin_login('nonexistent', 'anypass')), 'should return no rows for non-existent user';
 
-	-- is_authenticated returns authenticated: true
-	v_result := is_authenticated();
-	assert (v_result->>'authenticated')::boolean = true, 'should return authenticated: true';
+	-- is_authenticated returns (true)
+	v_auth := is_authenticated();
+	assert v_auth.authenticated = true, 'should return authenticated: true';
 
 	raise notice 'All admin tests passed!';
 end;
