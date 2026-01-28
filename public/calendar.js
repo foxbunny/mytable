@@ -1,18 +1,23 @@
-import { extend, part } from './common.js'
+import { extend, part, registerTemplate } from './common.js'
 
-let fragmentPromise = null
+let fragment = fetch('_calendar.html')
+	.then(r => r.text())
+	.then(html => {
+		let container = document.createElement('div')
+		container.innerHTML = html
+		for (let tmpl of container.querySelectorAll('template'))
+			document.body.appendChild(tmpl)
+	})
 
-let loadFragment = () => {
-	if (fragmentPromise) return fragmentPromise
-	fragmentPromise = fetch('_calendar.html')
-		.then(r => r.text())
-		.then(html => {
-			let tpl = document.createElement('template')
-			tpl.innerHTML = html
-			return tpl.content.firstElementChild
-		})
-	return fragmentPromise
-}
+registerTemplate('calendar-day', {
+	[registerTemplate.key]: 'dateStr',
+	day: ($, v) => $.text(v),
+	dateStr: ($, v) => $.data('day', v),
+	other: ($, v) => $.data('other', v ? '' : null),
+	today: ($, v) => $.data('today', v ? '' : null),
+	selected: ($, v) => $.data('selected', v ? '' : null),
+	pending: ($, v) => $.data('pending', v ? '' : null),
+})
 
 let monthFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
 let weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
@@ -46,20 +51,22 @@ extend('calendar', function (els, value) {
 		el._calendarViewMonth = today.getMonth()
 		el._calendarPending = new Set()
 
-		loadFragment().then(frag => {
-			el.appendChild(frag.cloneNode(true))
+		fragment.then(() => {
+			let calParts = part('calendar-widget').render()
+			calParts.each(node => el.appendChild(node))
+			el._calendarParts = calParts
 
-			let weekdays = el.querySelector('[data-part="weekdays"]')
+			let weekdays = calParts.part('weekdays')
 			getWeekdayLabels().forEach(label => {
 				let span = document.createElement('span')
 				span.textContent = label
-				weekdays.appendChild(span)
+				weekdays.append(span)
 			})
 
-			part('prev', el).on('click', () => navigate(el, -1))
-			part('next', el).on('click', () => navigate(el, 1))
-			part('today', el).on('click', () => goToday(el))
-			part('days', el).on('click', ev => {
+			calParts.part('prev').on('click', () => navigate(el, -1))
+			calParts.part('next').on('click', () => navigate(el, 1))
+			calParts.part('today').on('click', () => goToday(el))
+			calParts.part('days').on('click', ev => {
 				let btn = ev.target.closest('button')
 				if (btn) select(el, btn.dataset.day)
 			})
@@ -72,7 +79,7 @@ extend('calendar', function (els, value) {
 	el._calendarSelected = toDateStr(d)
 	el._calendarViewYear = d.getFullYear()
 	el._calendarViewMonth = d.getMonth()
-	if (el.querySelector('[data-part="days"]')) render(el)
+	if (el._calendarParts) render(el)
 
 	return this
 })
@@ -84,7 +91,7 @@ extend('calendarPending', function (els, dates) {
 	el._calendarPending = new Set(
 		(dates || []).map(d => toDateStr(new Date(d + 'T00:00:00')))
 	)
-	if (el.querySelector('[data-part="days"]')) render(el)
+	if (el._calendarParts) render(el)
 
 	return this
 })
@@ -115,6 +122,7 @@ let select = (el, dateStr) => {
 }
 
 let render = el => {
+	let calParts = el._calendarParts
 	let today = todayStr()
 	let year = el._calendarViewYear
 	let month = el._calendarViewMonth
@@ -132,31 +140,42 @@ let render = el => {
 	for (let i = startDay - 1; i >= 0; i--) {
 		let d = daysInPrev - i
 		let date = new Date(year, month - 1, d)
-		days.push({ day: d, dateStr: toDateStr(date), other: true })
+		let dateStr = toDateStr(date)
+		days.push({
+			dateStr,
+			day: d,
+			other: true,
+			today: dateStr == today,
+			selected: dateStr == selected,
+			pending: pending.has(dateStr),
+		})
 	}
 	for (let d = 1; d <= daysInMonth; d++) {
 		let date = new Date(year, month, d)
-		days.push({ day: d, dateStr: toDateStr(date), other: false })
+		let dateStr = toDateStr(date)
+		days.push({
+			dateStr,
+			day: d,
+			other: false,
+			today: dateStr == today,
+			selected: dateStr == selected,
+			pending: pending.has(dateStr),
+		})
 	}
 	let remaining = 42 - days.length
 	for (let d = 1; d <= remaining; d++) {
 		let date = new Date(year, month + 1, d)
-		days.push({ day: d, dateStr: toDateStr(date), other: true })
+		let dateStr = toDateStr(date)
+		days.push({
+			dateStr,
+			day: d,
+			other: true,
+			today: dateStr == today,
+			selected: dateStr == selected,
+			pending: pending.has(dateStr),
+		})
 	}
 
-	part('month-year', el).text(monthFmt.format(firstDay))
-
-	let daysEl = el.querySelector('[data-part="days"]')
-	daysEl.innerHTML = ''
-	days.forEach(d => {
-		let btn = document.createElement('button')
-		btn.type = 'button'
-		btn.textContent = d.day
-		btn.dataset.day = d.dateStr
-		if (d.other) btn.dataset.other = ''
-		if (d.dateStr == today) btn.dataset.today = ''
-		if (d.dateStr == selected) btn.dataset.selected = ''
-		if (pending.has(d.dateStr)) btn.dataset.pending = ''
-		daysEl.appendChild(btn)
-	})
+	calParts.part('month-year').text(monthFmt.format(firstDay))
+	calParts.renderFromTemplate('calendar-day', days)
 }
