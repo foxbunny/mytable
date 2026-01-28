@@ -697,3 +697,7 @@ tbody tr:last-child td {
 	background: var(--c-sub-bg);
 	border-radius: 50%;
 }
+
+.calendar-body button[data-selected][data-pending]::after {
+	background: var(--c-accent-fg);
+}

@@ -29,6 +29,8 @@ let showToast = (message) => {
 
 let $flow = part('flow')
 let $form = part('reservation-form')
+let $resDate = part('res-date')
+let $resTime = part('res-time')
 let $countdownSeconds = part('countdown-seconds')
 let $countdownFill = part('countdown-fill')
 
@@ -85,8 +87,8 @@ let setFormDefaults = () => {
 	let dd = String(now.getDate()).padStart(2, '0')
 	let today = `${yyyy}-${mm}-${dd}`
 
-	part('res-date').each(el => el.min = today)
-	part('res-date').val(today)
+	$resDate.each(el => el.min = today)
+	$resDate.val(today)
 
 	// Default time to 90 minutes from now, rounded to nearest 15 min
 	let future = new Date(now.getTime() + 90 * 60 * 1000)
@@ -94,7 +96,16 @@ let setFormDefaults = () => {
 	let m = Math.ceil(future.getMinutes() / 15) * 15
 	if (m >= 60) { m = 0; h++ }
 	if (h >= 24) { h = 0 }
-	part('res-time').val(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'))
+	$resTime.val(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'))
+}
+
+let validateNotInPast = () => {
+	let date = $resDate.val()
+	let time = $resTime.val()
+	if (!date || !time) return
+	let selected = new Date(date + 'T' + time)
+	let isPast = selected < new Date()
+	$resTime.validate(() => isPast ? 'Reservation time cannot be in the past' : '')
 }
 
 let populatePreview = (data) => {
@@ -263,10 +274,14 @@ let resetForm = () => {
 	// Reset form
 	$form.each(el => el.reset())
 	setFormDefaults()
+	validateNotInPast()
 	setStep('form')
 }
 
 // Event handlers
+$resDate.on('change', validateNotInPast)
+$resTime.on('change', validateNotInPast)
+
 $form.submit(data => {
 	state.formData = data
 	populatePreview(data)
@@ -298,6 +313,7 @@ $flow.action({
 
 // Initialize
 setFormDefaults()
+validateNotInPast()
 
 // Check for token in URL
 let urlParams = new URLSearchParams(location.search)

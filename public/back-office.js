@@ -153,6 +153,11 @@ let isToday = (d) => {
 		d.getDate() == today.getDate()
 }
 
+let isInPast = (date, time) => {
+	if (!date || !time) return false
+	return new Date(date + 'T' + time) < new Date()
+}
+
 // Position table markers overlay to match rendered image bounds
 let positionTableMarkers = () => {
 	if (!$floorplanImage.get('naturalWidth')) return
@@ -633,6 +638,11 @@ let updateBookingSelection = () => {
 let confirmBooking = () => {
 	if (state.bookingSelectedIds.length == 0) return
 
+	if (isInPast($bookingDate.val(), $bookingTime.val())) {
+		showToast('Cannot create reservation in the past', 'error')
+		return
+	}
+
 	if (state.bookingMode == 'pending' && state.bookingPendingRes) {
 		let res = state.bookingPendingRes
 		let message = $bookingAdminMessage.val() || null
@@ -791,6 +801,12 @@ $reservationDialog.action({ close: () => $reservationDialog.modal(false) })
 
 $reservationForm.submit(data => {
 	$reservationDialog.data('msg', false)
+
+	if (isInPast(data.reservationDate, data.reservationTime)) {
+		$formErrorText.text('Cannot create reservation in the past')
+		$reservationDialog.data('msg', 'api')
+		return
+	}
 
 	let payload = {
 		pGuestName: data.guestName,
