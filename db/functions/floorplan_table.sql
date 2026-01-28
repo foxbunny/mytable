@@ -1,3 +1,12 @@
+-- Check if any tables exist (across all floorplans)
+drop function if exists has_tables();
+create function has_tables() returns table(has_tables boolean) as $$
+	select exists(select 1 from floorplan_table);
+$$ language sql;
+
+comment on function has_tables() is 'HTTP GET
+Check if any tables exist across all floorplans';
+
 -- Get all tables for a floorplan
 drop function if exists get_floorplan_tables(int);
 create function get_floorplan_tables(p_floorplan_id int) returns setof floorplan_table_info as $$

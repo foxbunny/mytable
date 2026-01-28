@@ -26,6 +26,12 @@ create function save_restaurant(
 	p_phone text default null,
 	p_working_hours jsonb default '{}'
 ) returns void as $$
+begin
+	-- Validate that at least one table exists across all floorplans
+	if not exists(select 1 from floorplan_table) then
+		raise exception 'NO_TABLES: Please add at least one table to a floor plan before completing setup';
+	end if;
+
 	insert into restaurant (id, name, address, phone, working_hours)
 	values (1, p_name, p_address, p_phone, p_working_hours)
 	on conflict (id) do update set
@@ -33,7 +39,8 @@ create function save_restaurant(
 		address = excluded.address,
 		phone = excluded.phone,
 		working_hours = excluded.working_hours;
-$$ language sql;
+end;
+$$ language plpgsql;
 
 comment on function save_restaurant(text, text, text, jsonb) is 'HTTP POST
 @authorize
@@ -46,8 +53,10 @@ do $$
 declare
 	v_configured boolean;
 	v_info restaurant_info;
+	v_floorplan_id int;
 begin
 	truncate restaurant cascade;
+	truncate floorplan cascade;
 
 	-- is_restaurant_configured returns false when no restaurant
 	select configured into v_configured from is_restaurant_configured();
@@ -57,7 +66,23 @@ begin
 	v_info := get_restaurant();
 	assert v_info is null, 'get_restaurant should return null when no restaurant exists';
 
-	-- save_restaurant creates restaurant
+	-- save_restaurant fails without tables
+	begin
+		perform save_restaurant('Test Restaurant', '123 Main St', '555-1234', '{}');
+		raise exception 'save_restaurant should have failed without tables';
+	exception when others then
+		assert sqlerrm like 'NO_TABLES:%', 'should raise NO_TABLES error';
+	end;
+
+	-- Create a floorplan and table for subsequent tests
+	insert into floorplan (name, image_path, image_width, image_height)
+	values ('Main Floor', '/uploads/floor.png', 800, 600)
+	returning id into v_floorplan_id;
+
+	insert into floorplan_table (floorplan_id, name, capacity, x_pct, y_pct)
+	values (v_floorplan_id, '1', 4, 0.5, 0.5);
+
+	-- save_restaurant creates restaurant when tables exist
 	perform save_restaurant('Test Restaurant', '123 Main St', '555-1234', '{"monday": {"open": "09:00", "close": "17:00"}}');
 	select configured into v_configured from is_restaurant_configured();
 	assert v_configured = true, 'configured should be true after save';

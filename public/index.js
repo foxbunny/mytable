@@ -1,4 +1,4 @@
-import { api, part } from './common.js'
+import { api, $ } from './common.js'
 
 let state = {
 	formData: null,
@@ -8,57 +8,57 @@ let state = {
 	sse: null
 }
 
-let $toastList = document.getElementById('toast-list')
-let toastTpl = part('toast-template')
+let toastList = document.getElementById('toast-list')
+let toastTpl = $('@toast-template')
 
 let showToast = (message) => {
-	let toast = toastTpl.render()
-	toast.part('toast-message').text(message)
-	toast.part('toast-dismiss').on('click', () => {
-		toast.data('clear', '')
+	let toast = toastTpl.content.cloneNode(true).firstElementChild
+	$('@toast-message', toast).textContent = message
+	$('@toast-dismiss', toast).addEventListener('click', () => {
+		toast.dataset.clear = ''
 		setTimeout(() => toast.remove(), 300)
 	})
-	toast.on('animationend', ev => {
+	toast.addEventListener('animationend', ev => {
 		if (ev.animationName == 'expire') {
-			toast.data('clear', '')
+			toast.dataset.clear = ''
 			setTimeout(() => toast.remove(), 300)
 		}
 	})
-	toast.each(el => $toastList.appendChild(el))
+	toastList.appendChild(toast)
 }
 
-let $flow = part('flow')
-let $form = part('reservation-form')
-let $resDate = part('res-date')
-let $resTime = part('res-time')
-let $countdownSeconds = part('countdown-seconds')
-let $countdownFill = part('countdown-fill')
+let flow = $('@flow')
+let form = $('@reservation-form')
+let resDate = $('@res-date')
+let resTime = $('@res-time')
+let countdownSeconds = $('@countdown-seconds')
+let countdownFill = $('@countdown-fill')
 
-let $previewName = part('preview-name')
-let $previewContact = part('preview-contact')
-let $previewParty = part('preview-party')
-let $previewDate = part('preview-date')
-let $previewTime = part('preview-time')
-let $previewNotesRow = part('preview-notes-row')
-let $previewNotes = part('preview-notes')
+let previewName = $('@preview-name')
+let previewContact = $('@preview-contact')
+let previewParty = $('@preview-party')
+let previewDate = $('@preview-date')
+let previewTime = $('@preview-time')
+let previewNotesRow = $('@preview-notes-row')
+let previewNotes = $('@preview-notes')
 
-let $waitingName = part('waiting-name')
-let $waitingParty = part('waiting-party')
-let $waitingDate = part('waiting-date')
-let $waitingTime = part('waiting-time')
+let waitingName = $('@waiting-name')
+let waitingParty = $('@waiting-party')
+let waitingDate = $('@waiting-date')
+let waitingTime = $('@waiting-time')
 
-let $confirmedName = part('confirmed-name')
-let $confirmedParty = part('confirmed-party')
-let $confirmedDate = part('confirmed-date')
-let $confirmedTime = part('confirmed-time')
-let $confirmedMessage = part('confirmed-message')
-let $confirmedMessageText = part('confirmed-message-text')
+let confirmedName = $('@confirmed-name')
+let confirmedParty = $('@confirmed-party')
+let confirmedDate = $('@confirmed-date')
+let confirmedTime = $('@confirmed-time')
+let confirmedMessage = $('@confirmed-message')
+let confirmedMessageText = $('@confirmed-message-text')
 
-let $declinedMessage = part('declined-message')
-let $declinedMessageText = part('declined-message-text')
+let declinedMessage = $('@declined-message')
+let declinedMessageText = $('@declined-message-text')
 
-let $copyLinkText = part('copy-link-text')
-let $copyLinkDone = part('copy-link-done')
+let copyLinkText = $('@copy-link-text')
+let copyLinkDone = $('@copy-link-done')
 
 let formatDate = d => {
 	if (!d) return ''
@@ -78,7 +78,7 @@ let formatTime = t => {
 	return `${hour}:${m} ${ampm}`
 }
 
-let setStep = (step) => $flow.data('step', step)
+let setStep = (step) => flow.dataset.step = step
 
 let setFormDefaults = () => {
 	let now = new Date()
@@ -87,8 +87,8 @@ let setFormDefaults = () => {
 	let dd = String(now.getDate()).padStart(2, '0')
 	let today = `${yyyy}-${mm}-${dd}`
 
-	$resDate.each(el => el.min = today)
-	$resDate.val(today)
+	resDate.min = today
+	resDate.value = today
 
 	// Default time to 90 minutes from now, rounded to nearest 15 min
 	let future = new Date(now.getTime() + 90 * 60 * 1000)
@@ -96,55 +96,55 @@ let setFormDefaults = () => {
 	let m = Math.ceil(future.getMinutes() / 15) * 15
 	if (m >= 60) { m = 0; h++ }
 	if (h >= 24) { h = 0 }
-	$resTime.val(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'))
+	resTime.value = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0')
 }
 
 let validateNotInPast = () => {
-	let date = $resDate.val()
-	let time = $resTime.val()
+	let date = resDate.value
+	let time = resTime.value
 	if (!date || !time) return
 	let selected = new Date(date + 'T' + time)
 	let isPast = selected < new Date()
-	$resTime.validate(() => isPast ? 'Reservation time cannot be in the past' : '')
+	resTime.setCustomValidity(isPast ? 'Reservation time cannot be in the past' : '')
 }
 
 let populatePreview = (data) => {
-	$previewName.text(data.guestName)
-	$previewContact.text(data.guestPhone || data.guestEmail || '—')
-	$previewParty.text(data.partySize)
-	$previewDate.text(formatDate(data.reservationDate))
-	$previewTime.text(formatTime(data.reservationTime))
+	previewName.textContent = data.guestName
+	previewContact.textContent = data.guestPhone || data.guestEmail || '—'
+	previewParty.textContent = data.partySize
+	previewDate.textContent = formatDate(data.reservationDate)
+	previewTime.textContent = formatTime(data.reservationTime)
 
-	if (data.notes) $previewNotes.text(data.notes)
-	$previewNotesRow.shown(!!data.notes)
+	if (data.notes) previewNotes.textContent = data.notes
+	previewNotesRow.hidden = !data.notes
 }
 
 let populateWaiting = (data) => {
-	$waitingName.text(data.guestName || data.guest_name)
-	$waitingParty.text(data.partySize || data.party_size)
-	$waitingDate.text(formatDate(data.reservationDate || data.reservation_date))
-	$waitingTime.text(formatTime(data.reservationTime || data.reservation_time))
+	waitingName.textContent = data.guestName || data.guest_name
+	waitingParty.textContent = data.partySize || data.party_size
+	waitingDate.textContent = formatDate(data.reservationDate || data.reservation_date)
+	waitingTime.textContent = formatTime(data.reservationTime || data.reservation_time)
 }
 
 let populateConfirmed = (data, message) => {
-	$confirmedName.text(data.guestName || data.guest_name)
-	$confirmedParty.text(data.partySize || data.party_size)
-	$confirmedDate.text(formatDate(data.reservationDate || data.reservation_date))
-	$confirmedTime.text(formatTime(data.reservationTime || data.reservation_time))
+	confirmedName.textContent = data.guestName || data.guest_name
+	confirmedParty.textContent = data.partySize || data.party_size
+	confirmedDate.textContent = formatDate(data.reservationDate || data.reservation_date)
+	confirmedTime.textContent = formatTime(data.reservationTime || data.reservation_time)
 
-	if (message) $confirmedMessageText.text(message)
-	$confirmedMessage.shown(!!message)
+	if (message) confirmedMessageText.textContent = message
+	confirmedMessage.hidden = !message
 }
 
 let startCountdown = () => {
 	state.countdownSeconds = 60
-	$countdownSeconds.text(state.countdownSeconds)
-	$countdownFill.cssProp('--progress', 100)
+	countdownSeconds.textContent = state.countdownSeconds
+	countdownFill.style.setProperty('--progress', 100)
 
 	state.countdownTimer = setInterval(() => {
 		state.countdownSeconds--
-		$countdownSeconds.text(state.countdownSeconds)
-		$countdownFill.cssProp('--progress', state.countdownSeconds / 60 * 100)
+		countdownSeconds.textContent = state.countdownSeconds
+		countdownFill.style.setProperty('--progress', state.countdownSeconds / 60 * 100)
 
 		if (state.countdownSeconds <= 0) {
 			clearCountdown()
@@ -221,8 +221,8 @@ let handleNotification = (code, message, data) => {
 		populateConfirmed(resData, message)
 		setStep('confirmed')
 	} else if (code == 'reservation_declined') {
-		if (message) $declinedMessageText.text(message)
-		$declinedMessage.shown(!!message)
+		if (message) declinedMessageText.textContent = message
+		declinedMessage.hidden = !message
 		setStep('declined')
 	}
 }
@@ -248,8 +248,8 @@ let loadFromToken = (token) => {
 				populateConfirmed(displayData, data.adminMessage)
 				setStep('confirmed')
 			} else if (data.reservationStatus == 'declined') {
-				if (data.adminMessage) $declinedMessageText.text(data.adminMessage)
-				$declinedMessage.shown(!!data.adminMessage)
+				if (data.adminMessage) declinedMessageText.textContent = data.adminMessage
+				declinedMessage.hidden = !data.adminMessage
 				setStep('declined')
 			}
 		} else {
@@ -272,43 +272,49 @@ let resetForm = () => {
 	url.searchParams.delete('token')
 	history.replaceState(null, '', url)
 	// Reset form
-	$form.each(el => el.reset())
+	form.reset()
 	setFormDefaults()
 	validateNotInPast()
 	setStep('form')
 }
 
 // Event handlers
-$resDate.on('change', validateNotInPast)
-$resTime.on('change', validateNotInPast)
+resDate.addEventListener('change', validateNotInPast)
+resTime.addEventListener('change', validateNotInPast)
 
-$form.submit(data => {
+form.addEventListener('submit', ev => {
+	ev.preventDefault()
+	let data = Object.fromEntries(new FormData(form))
 	state.formData = data
 	populatePreview(data)
 	setStep('preview')
 	startCountdown()
 })
 
-$flow.action({
-	edit: () => {
+// Delegated action handler
+flow.addEventListener('click', ev => {
+	let btn = ev.target.closest('button[data-action]')
+	if (!btn) return
+	let action = btn.dataset.action
+
+	if (action == 'edit') {
 		clearCountdown()
 		setStep('form')
-	},
-	'submit-now': () => {
+	} else if (action == 'submit-now') {
 		clearCountdown()
 		submitReservation()
-	},
-	retry: () => resetForm(),
-	'copy-link': () => {
+	} else if (action == 'retry') {
+		resetForm()
+	} else if (action == 'copy-link') {
 		navigator.clipboard.writeText(location.href).then(() => {
-			$copyLinkText.hidden()
-			$copyLinkDone.shown()
+			copyLinkText.hidden = true
+			copyLinkDone.hidden = false
 			setTimeout(() => {
-				$copyLinkText.shown()
-				$copyLinkDone.hidden()
+				copyLinkText.hidden = false
+				copyLinkDone.hidden = true
 			}, 2000)
 		})
-	},
+	}
 })
 
 // Initialize

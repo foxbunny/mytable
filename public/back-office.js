@@ -1,22 +1,22 @@
-import { api, part, makeChangeTogether, registerTemplate } from './common.js'
-import './calendar.js'
+import { api, $, $$, renderList, showToast, delegate } from './common.js'
+import { initCalendar, getCalendarValue, setCalendarPending } from './calendar.js'
 
 // ── Recipes ──
 
-registerTemplate('floor-tabs', {
-	[registerTemplate.create]: ($) => {
-		$.on('click', () => selectFloorplan(parseInt($.data('floorplanId'))))
+let floorTabsRecipe = {
+	create: (el) => {
+		el.addEventListener('click', () => selectFloorplan(parseInt(el.dataset.floorplanId)))
 	},
-	name: ($, v) => $.text(v),
-	floorplanId: ($, v) => $.data('floorplanId', v),
-	active: ($, v) => $.data('active', v || false),
-})
+	name: (el, v) => el.textContent = v,
+	floorplanId: (el, v) => el.dataset.floorplanId = v,
+	active: (el, v) => el.toggleAttribute('data-active', v),
+}
 
-registerTemplate('table-markers', {
-	[registerTemplate.create]: ($) => {
-		$.on('click', ev => {
+let tableMarkersRecipe = {
+	create: (el) => {
+		el.addEventListener('click', ev => {
 			ev.stopPropagation()
-			let id = parseInt($.data('tableId'))
+			let id = parseInt(el.dataset.tableId)
 			if (state.bookingMode) {
 				let table = state.bookingSlotTables.find(t => t.id == id)
 				if (table) toggleBookingTable(table)
@@ -25,41 +25,41 @@ registerTemplate('table-markers', {
 			}
 		})
 	},
-	name: ($, v) => $.part('marker-name').text(v),
-	x: ($, v) => $.cssProp('--x', v),
-	y: ($, v) => $.cssProp('--y', v),
-	tableId: ($, v) => $.data('tableId', v),
-	blocked: ($, v) => $.data('blocked', v || false),
-	occupied: ($, v) => $.data('occupied', v || false),
-	selected: ($, v) => $.data('selected', v || false),
-	unavailable: ($, v) => $.data('unavailable', v || false),
-	bookingSelected: ($, v) => $.data('bookingSelected', v || false),
-})
+	name: (el, v) => $('@marker-name', el).textContent = v,
+	x: (el, v) => el.style.setProperty('--x', v),
+	y: (el, v) => el.style.setProperty('--y', v),
+	tableId: (el, v) => el.dataset.tableId = v,
+	blocked: (el, v) => el.toggleAttribute('data-blocked', v),
+	occupied: (el, v) => el.toggleAttribute('data-occupied', v),
+	selected: (el, v) => el.toggleAttribute('data-selected', v),
+	unavailable: (el, v) => el.toggleAttribute('data-unavailable', v),
+	bookingSelected: (el, v) => el.toggleAttribute('data-bookingSelected', v),
+}
 
-registerTemplate('reservation-list', {
-	[registerTemplate.create]: ($) => {
-		$.on('click', () => {
-			let id = parseInt($.data('reservationId'))
+let reservationListRecipe = {
+	create: (el) => {
+		el.addEventListener('click', () => {
+			let id = parseInt(el.dataset.reservationId)
 			let res = state.reservations.find(r => r.id == id)
 			if (!res) return
 			if (res.status == 'pending') enterBookingMode('pending', res)
 			else showDetailView(res)
 		})
-		$.on('mouseenter', () => {
-			let id = parseInt($.data('reservationId'))
+		el.addEventListener('mouseenter', () => {
+			let id = parseInt(el.dataset.reservationId)
 			let res = state.reservations.find(r => r.id == id)
 			if (res) highlightTables(res.tableIds)
 		})
-		$.on('mouseleave', () => highlightTables(null))
+		el.addEventListener('mouseleave', () => highlightTables(null))
 	},
-	time: ($, v) => $.part('res-item-time').text(v),
-	endTime: ($, v) => $.part('res-item-end').text(v),
-	guest: ($, v) => $.part('res-item-guest').text(v),
-	party: ($, v) => $.part('res-item-party').text(v),
-	status: ($, v) => $.part('res-item-status').text(v).data('status', v),
-	reservationId: ($, v) => $.data('reservationId', v),
-	urgent: ($, v) => $.data('urgent', v || false),
-})
+	time: (el, v) => $('@res-item-time', el).textContent = v,
+	endTime: (el, v) => $('@res-item-end', el).textContent = v,
+	guest: (el, v) => $('@res-item-guest', el).textContent = v,
+	party: (el, v) => $('@res-item-party', el).textContent = v,
+	status: (el, v) => { let s = $('@res-item-status', el); s.textContent = v; s.dataset.status = v },
+	reservationId: (el, v) => el.dataset.reservationId = v,
+	urgent: (el, v) => el.toggleAttribute('data-urgent', v),
+}
 
 // ── State ──
 
@@ -82,39 +82,53 @@ let state = {
 
 // ── Render content ──
 
-let page = part('content').render()
-part('content').replaceWith(page)
+let contentTpl = $('@content')
+let page = contentTpl.content.cloneNode(true).firstElementChild
+contentTpl.replaceWith(page)
 
 // ── Refs (content) ──
 
-let $sidebar = page.part('sidebar')
-let $calendar = page.part('calendar')
-let $floorplanImage = page.part('floorplan-image')
-let $tableMarkers = page.part('table-markers')
-let $toolbarBlock = page.part('toolbar-block')
+let sidebar = $('@sidebar', page)
+let calendar = $('@calendar', page)
+let floorplanImage = $('@floorplan-image', page)
+let tableMarkersContainer = $('@table-markers', page)
+let toolbarBlock = $('@toolbar-block', page)
 
-let $bookingParty = page.part('booking-party')
-let $bookingDate = page.part('booking-date')
-let $bookingTime = page.part('booking-time')
-let $bookingDuration = page.part('booking-duration')
-let $sidebarBooking = page.part('sidebar-booking')
-let $bookingAdminMessage = page.part('booking-admin-message')
+let bookingParty = $('@booking-party', page)
+let bookingDate = $('@booking-date', page)
+let bookingTime = $('@booking-time', page)
+let bookingDuration = $('@booking-duration', page)
+let sidebarBooking = $('@sidebar-booking', page)
+let bookingAdminMessage = $('@booking-admin-message', page)
+
+// Replace slot elements with containers for renderList
+let floorTabsSlot = page.querySelector('slot[name="floor-tabs"]')
+let floorTabsContainer = document.createElement('div')
+floorTabsContainer.className = 'floor-tabs-container'
+floorTabsSlot.replaceWith(floorTabsContainer)
+
+let tableMarkersSlot = tableMarkersContainer.querySelector('slot[name="table-markers"]')
+let tableMarkersListContainer = document.createElement('div')
+tableMarkersListContainer.className = 'table-markers-list'
+if (tableMarkersSlot) tableMarkersSlot.replaceWith(tableMarkersListContainer)
+
+let reservationListContainer = $('@reservation-list', page)
+reservationListContainer.innerHTML = ''
 
 // ── Refs (dialogs & toasts — outside content template) ──
 
-let $toastList = document.getElementById('toast-list')
-let toastTpl = part('toast-template')
-let newResToastTpl = part('new-res-toast-template')
+let toastList = document.getElementById('toast-list')
+let newResToastTpl = $('@new-res-toast-template')
 
-let $reservationDialog = part('reservation-dialog')
-let $dialogSubmit = part('dialog-submit')
-let $reservationForm = part('reservation-form')
-let $tableSelect = part('table-select')
-let $dialogTableName = part('dialog-table-name')
-let $formErrorText = part('form-error-text')
+let reservationDialog = $('@reservation-dialog')
+let dialogSubmit = $('@dialog-submit')
+let reservationForm = $('@reservation-form')
+let tableSelect = $('@table-select')
+let dialogTableName = $('@dialog-table-name')
+let formErrorText = $('@form-error-text')
 
-let $guestDialog = part('guest-dialog')
-let $guestForm = part('guest-form')
+let guestDialog = $('@guest-dialog')
+let guestForm = $('@guest-form')
 
 // ── Shared utilities ──
 
@@ -160,11 +174,11 @@ let isInPast = (date, time) => {
 
 // Position table markers overlay to match rendered image bounds
 let positionTableMarkers = () => {
-	if (!$floorplanImage.get('naturalWidth')) return
+	if (!floorplanImage.naturalWidth) return
 
-	let imgRatio = $floorplanImage.get('naturalWidth') / $floorplanImage.get('naturalHeight')
-	let boxW = $floorplanImage.get('clientWidth')
-	let boxH = $floorplanImage.get('clientHeight')
+	let imgRatio = floorplanImage.naturalWidth / floorplanImage.naturalHeight
+	let boxW = floorplanImage.clientWidth
+	let boxH = floorplanImage.clientHeight
 	let boxRatio = boxW / boxH
 
 	let renderW, renderH
@@ -176,55 +190,33 @@ let positionTableMarkers = () => {
 		renderW = boxH * imgRatio
 	}
 
-	$tableMarkers.cssProp('--x', (boxW - renderW) / 2)
-	$tableMarkers.cssProp('--y', (boxH - renderH) / 2)
-	$tableMarkers.cssProp('--w', renderW)
-	$tableMarkers.cssProp('--h', renderH)
+	tableMarkersContainer.style.setProperty('--x', (boxW - renderW) / 2)
+	tableMarkersContainer.style.setProperty('--y', (boxH - renderH) / 2)
+	tableMarkersContainer.style.setProperty('--w', renderW)
+	tableMarkersContainer.style.setProperty('--h', renderH)
 }
 
-$floorplanImage.on('load', positionTableMarkers)
+floorplanImage.addEventListener('load', positionTableMarkers)
 window.addEventListener('resize', positionTableMarkers)
 
 // ── Toast ──
 
-let showToast = (message, level = 'info') => {
-	let toast = toastTpl.render()
-	toast.part('toast-message').text(message)
-	toast.data('level', level)
-
-	toast.part('toast-dismiss').on('click', () => {
-		toast.data('clear', '')
-		setTimeout(() => toast.remove(), 300)
-	})
-
-	toast.on('animationend', ev => {
-		if (ev.animationName == 'expire') {
-			toast.data('clear', '')
-			setTimeout(() => toast.remove(), 300)
-		}
-	})
-
-	toast.each(el => $toastList.appendChild(el))
+let dismissToast = (toast) => {
+	toast.dataset.clear = ''
+	setTimeout(() => toast.remove(), 300)
 }
 
 let showNewResToast = (r) => {
-	let toast = newResToastTpl.render()
-	toast.part('toast-guest').text(r.guestName)
-	toast.part('toast-party').text(r.partySize)
+	let toast = newResToastTpl.content.cloneNode(true).firstElementChild
+	$('@toast-guest', toast).textContent = r.guestName
+	$('@toast-party', toast).textContent = r.partySize
 
-	toast.part('toast-dismiss').on('click', () => {
-		toast.data('clear', '')
-		setTimeout(() => toast.remove(), 300)
+	$('@toast-dismiss', toast).addEventListener('click', () => dismissToast(toast))
+	toast.addEventListener('animationend', ev => {
+		if (ev.animationName == 'expire') dismissToast(toast)
 	})
 
-	toast.on('animationend', ev => {
-		if (ev.animationName == 'expire') {
-			toast.data('clear', '')
-			setTimeout(() => toast.remove(), 300)
-		}
-	})
-
-	toast.each(el => $toastList.appendChild(el))
+	toastList.appendChild(toast)
 }
 
 // ── SSE ──
@@ -242,26 +234,41 @@ let startAdminSSE = () => {
 	}
 }
 
-// ── Calendar ──
+// ── Date Sync (replaces makeChangeTogether) ──
 
-let dateSync = makeChangeTogether()
-	.bind($bookingDate, 'val', d => toDateStr(d))
-	.bind($calendar, 'calendar')
-	.bind(v => {
-		state.currentDate = v
-		if (state.bookingMode)
-			loadSlotTables()
-		else
-			loadDataForDate().then(updateToolbar).catch(() => showToast('Failed to load data', 'error'))
-	})
-	.setFromEvent($calendar, 'change', { detail: 'value' })
-	.setFromEvent($bookingDate, 'change', { val: true }, fromDateStr)
+let syncDateFromCalendar = (value) => {
+	state.currentDate = value
+	bookingDate.value = toDateStr(value)
+	if (state.bookingMode)
+		loadSlotTables()
+	else
+		loadDataForDate().then(updateToolbar).catch(() => showToast('Failed to load data', 'error'))
+}
 
-let bookingLock = makeChangeTogether()
-	.bind($bookingParty, 'readOnly')
-	.bind($bookingDate, 'readOnly')
-	.bind($bookingTime, 'readOnly')
-	.bind(v => $calendar.data('disabled', v ? '' : null))
+let syncDateFromInput = () => {
+	let value = fromDateStr(bookingDate.value)
+	state.currentDate = value
+	initCalendar(calendar, value)
+	if (state.bookingMode)
+		loadSlotTables()
+	else
+		loadDataForDate().then(updateToolbar).catch(() => showToast('Failed to load data', 'error'))
+}
+
+let setDate = (value) => {
+	state.currentDate = value
+	bookingDate.value = toDateStr(value)
+	initCalendar(calendar, value)
+}
+
+// ── Booking Lock (replaces makeChangeTogether) ──
+
+let setBookingLock = (locked) => {
+	bookingParty.readOnly = locked
+	bookingDate.readOnly = locked
+	bookingTime.readOnly = locked
+	calendar.toggleAttribute('data-disabled', locked)
+}
 
 // ── Floorplan ──
 
@@ -277,10 +284,10 @@ let loadFloorplans = () => {
 
 let renderFloorTabs = () => {
 	let empty = state.floorplans.length == 0
-	page.part('floorplan-canvas').hidden(empty)
-	page.part('no-floorplans').shown(empty)
+	$('@floorplan-canvas', page).hidden = empty
+	$('@no-floorplans', page).hidden = !empty
 	if (empty) {
-		page.renderFromTemplate('floor-tabs', [])
+		renderList(floorTabsContainer, [], 'floor-tabs', floorTabsRecipe)
 		return
 	}
 
@@ -290,7 +297,7 @@ let renderFloorTabs = () => {
 		floorplanId: fp.id,
 		active: fp.id == state.currentFloorplanId,
 	}))
-	page.renderFromTemplate('floor-tabs', items)
+	renderList(floorTabsContainer, items, 'floor-tabs', floorTabsRecipe)
 }
 
 let selectFloorplan = (id) => {
@@ -318,7 +325,7 @@ let renderFloorplan = () => {
 	let fp = state.floorplans.find(f => f.id == state.currentFloorplanId)
 	if (!fp) return
 
-	$floorplanImage.src(fp.imagePath)
+	floorplanImage.src = fp.imagePath
 
 	let tables = state.tableStatus.filter(t => t.floorplanId == state.currentFloorplanId)
 	let items = tables.map(t => ({
@@ -333,15 +340,15 @@ let renderFloorplan = () => {
 		unavailable: false,
 		bookingSelected: false,
 	}))
-	page.renderFromTemplate('table-markers', items)
+	renderList(tableMarkersListContainer, items, 'table-markers', tableMarkersRecipe)
 }
 
 // ── Reservation List ──
 
 let renderReservationList = () => {
 	let empty = state.reservations.length == 0
-	page.part('reservation-list').hidden(empty)
-	page.part('no-reservations').shown(empty)
+	$('@reservation-list', page).hidden = empty
+	$('@no-reservations', page).hidden = !empty
 
 	let items = state.reservations.map(res => ({
 		id: res.id,
@@ -353,11 +360,11 @@ let renderReservationList = () => {
 		reservationId: res.id,
 		urgent: isUrgent(res),
 	}))
-	page.renderFromTemplate('reservation-list', items)
+	renderList(reservationListContainer, items, 'reservation-list', reservationListRecipe)
 }
 
 let highlightTables = (ids) => {
-	for (let marker of $tableMarkers.get('children')) {
+	for (let marker of tableMarkersListContainer.children) {
 		if (ids?.includes(parseInt(marker.dataset.tableId)))
 			marker.dataset.highlighted = ''
 		else
@@ -369,27 +376,28 @@ let highlightTables = (ids) => {
 
 let showDetailView = (res) => {
 	state.viewingReservation = res
-	$sidebar.data('mode', 'detail')
-	page.part('sidebar-detail').data('status', res.status)
+	sidebar.dataset.mode = 'detail'
+	$('@sidebar-detail', page).dataset.status = res.status
 
-	page.part('detail-guest-name').text(res.guestName)
-	page.part('detail-guest-contact').text(res.guestPhone || res.guestEmail || '—')
+	$('@detail-guest-name', page).textContent = res.guestName
+	$('@detail-guest-contact', page).textContent = res.guestPhone || res.guestEmail || '—'
 
-	page.part('detail-date').text(formatDate(res.reservationDate))
-	page.part('detail-time').text(formatTime(res.reservationTime) + ' – ' + addMinutes(res.reservationTime, res.durationMinutes))
-	page.part('detail-party').text(res.partySize)
-	page.part('detail-duration').text(formatDuration(res.durationMinutes))
-	page.part('detail-tables').text(res.tableNames?.length ? res.tableNames.join(', ') : '—')
+	$('@detail-date', page).textContent = formatDate(res.reservationDate)
+	$('@detail-time', page).textContent = formatTime(res.reservationTime) + ' – ' + addMinutes(res.reservationTime, res.durationMinutes)
+	$('@detail-party', page).textContent = res.partySize
+	$('@detail-duration', page).textContent = formatDuration(res.durationMinutes)
+	$('@detail-tables', page).textContent = res.tableNames?.length ? res.tableNames.join(', ') : '—'
 
-	if (res.notes) page.part('detail-notes-text').text(res.notes)
-	page.part('detail-notes').shown(!!res.notes)
+	let detailNotes = $('@detail-notes', page)
+	if (res.notes) $('@detail-notes-text', page).textContent = res.notes
+	detailNotes.hidden = !res.notes
 
 	highlightTables(res.tableIds)
 }
 
 let exitDetailView = () => {
 	state.viewingReservation = null
-	$sidebar.data('mode', 'list')
+	sidebar.dataset.mode = 'list'
 	highlightTables(null)
 }
 
@@ -404,12 +412,14 @@ let updateReservationStatus = (status) => {
 	}).catch(() => showToast('Failed to update reservation status', 'error'))
 }
 
-page.part('sidebar-detail').action({
-	back: () => exitDetailView(),
-	completed: () => updateReservationStatus('completed'),
-	no_show: () => updateReservationStatus('no_show'),
-	cancelled: () => updateReservationStatus('cancelled'),
-})
+// Delegated action handler for sidebar-detail
+$('@sidebar-detail', page).addEventListener('click', delegate('[data-action]', (ev, btn) => {
+	let action = btn.dataset.action
+	if (action == 'back') exitDetailView()
+	else if (action == 'completed') updateReservationStatus('completed')
+	else if (action == 'no_show') updateReservationStatus('no_show')
+	else if (action == 'cancelled') updateReservationStatus('cancelled')
+}))
 
 // ── Table Selection ──
 
@@ -427,11 +437,10 @@ let updateToolbar = () => {
 	let table = getSelectedTable()
 	let today = isToday(state.currentDate)
 
-	$toolbarBlock.shown(today)
-	$toolbarBlock.disabled(!table)
+	toolbarBlock.hidden = !today
+	toolbarBlock.disabled = !table
 
-	if (table)
-		$toolbarBlock.data('blocked', table.isBlocked || false)
+	if (table) toolbarBlock.toggleAttribute('data-blocked', table.isBlocked)
 }
 
 document.addEventListener('click', ev => {
@@ -443,7 +452,7 @@ document.addEventListener('click', ev => {
 	}
 })
 
-$toolbarBlock.on('click', () => {
+toolbarBlock.addEventListener('click', () => {
 	let table = getSelectedTable()
 	if (!table) return
 	let action = table.isBlocked ? 'unblock-table' : 'block-table'
@@ -454,11 +463,11 @@ $toolbarBlock.on('click', () => {
 
 // ── Booking ──
 
-page.part('new-res-btn').on('click', () => enterBookingMode('new'))
+$('@new-res-btn', page).addEventListener('click', () => enterBookingMode('new'))
 
 let loadPendingDates = () => {
 	return api.get('get-pending-dates').then(dates => {
-		$calendar.calendarPending(dates)
+		setCalendarPending(calendar, dates)
 	})
 }
 
@@ -476,19 +485,19 @@ let getSuggestedTime = () => {
 }
 
 let resetBookingUI = () => {
-	$sidebarBooking.data('bookingMode', 'new')
-	page.part('booking-guest-info').hidden()
-	page.part('booking-guest-name').text('')
-	page.part('booking-guest-contact').text('')
-	$bookingParty.val(2)
-	$bookingDate.val(toDateStr(state.currentDate))
-	$bookingTime.val(getSuggestedTime())
-	$bookingDuration.val(getDefaultDuration(2))
-	page.part('booking-notes').hidden()
-	page.part('booking-notes-text').text('')
-	$bookingAdminMessage.val('')
-	page.part('booking-decline').hidden()
-	bookingLock.set(false)
+	sidebarBooking.dataset.bookingMode = 'new'
+	$('@booking-guest-info', page).hidden = true
+	$('@booking-guest-name', page).textContent = ''
+	$('@booking-guest-contact', page).textContent = ''
+	bookingParty.value = 2
+	bookingDate.value = toDateStr(state.currentDate)
+	bookingTime.value = getSuggestedTime()
+	bookingDuration.value = getDefaultDuration(2)
+	$('@booking-notes', page).hidden = true
+	$('@booking-notes-text', page).textContent = ''
+	bookingAdminMessage.value = ''
+	$('@booking-decline', page).hidden = true
+	setBookingLock(false)
 }
 
 let enterBookingMode = (mode, pendingRes = null) => {
@@ -498,34 +507,34 @@ let enterBookingMode = (mode, pendingRes = null) => {
 	state.bookingPendingRes = pendingRes
 	state.bookingSelectedIds = []
 
-	$sidebar.data('mode', 'booking')
-	page.part('floorplan-area').data('mode', 'booking')
+	sidebar.dataset.mode = 'booking'
+	$('@floorplan-area', page).dataset.mode = 'booking'
 
 	resetBookingUI()
 
 	let preserveSelection = false
 
 	if (mode == 'pending' && pendingRes) {
-		$sidebarBooking.data('bookingMode', 'pending')
-		page.part('booking-guest-info').shown()
-		page.part('booking-guest-name').text(pendingRes.guestName)
-		page.part('booking-guest-contact').text(pendingRes.guestPhone || pendingRes.guestEmail || '—')
-		$bookingParty.val(pendingRes.partySize)
-		$bookingDate.val(pendingRes.reservationDate)
-		$bookingTime.val(pendingRes.reservationTime)
-		$bookingDuration.val(pendingRes.durationMinutes)
+		sidebarBooking.dataset.bookingMode = 'pending'
+		$('@booking-guest-info', page).hidden = false
+		$('@booking-guest-name', page).textContent = pendingRes.guestName
+		$('@booking-guest-contact', page).textContent = pendingRes.guestPhone || pendingRes.guestEmail || '—'
+		bookingParty.value = pendingRes.partySize
+		bookingDate.value = pendingRes.reservationDate
+		bookingTime.value = pendingRes.reservationTime
+		bookingDuration.value = pendingRes.durationMinutes
 
-		bookingLock.set(true)
+		setBookingLock(true)
 
 		if (pendingRes.notes) {
-			page.part('booking-notes-text').text(pendingRes.notes)
-			page.part('booking-notes').shown()
+			$('@booking-notes-text', page).textContent = pendingRes.notes
+			$('@booking-notes', page).hidden = false
 		}
 
-		page.part('booking-decline').shown()
+		$('@booking-decline', page).hidden = false
 
 		state.currentDate = fromDateStr(pendingRes.reservationDate)
-		$calendar.calendar(state.currentDate)
+		initCalendar(calendar, state.currentDate)
 
 		if (pendingRes.tableIds?.length) {
 			state.bookingSelectedIds = [...pendingRes.tableIds]
@@ -542,17 +551,17 @@ let exitBookingMode = () => {
 	state.bookingSlotTables = []
 	state.bookingSelectedIds = []
 
-	bookingLock.set(false)
+	setBookingLock(false)
 
-	$sidebar.data('mode', 'list')
-	page.part('floorplan-area').data('mode', 'view')
+	sidebar.dataset.mode = 'list'
+	$('@floorplan-area', page).dataset.mode = 'view'
 	renderFloorplan()
 }
 
 let loadSlotTables = (clearSelection = true) => {
-	let date = $bookingDate.val()
-	let time = $bookingTime.val()
-	let duration = parseInt($bookingDuration.val())
+	let date = bookingDate.value
+	let time = bookingTime.value
+	let duration = parseInt(bookingDuration.value)
 	let excludeId = state.bookingPendingRes?.id || null
 
 	if (!date || !time) return
@@ -575,7 +584,7 @@ let renderBookingFloorplan = () => {
 	let fp = state.floorplans.find(f => f.id == state.currentFloorplanId)
 	if (!fp) return
 
-	$floorplanImage.src(fp.imagePath)
+	floorplanImage.src = fp.imagePath
 
 	let tables = state.bookingSlotTables.filter(t => t.floorplanId == state.currentFloorplanId)
 	let items = tables.map(t => ({
@@ -590,7 +599,7 @@ let renderBookingFloorplan = () => {
 		unavailable: !t.isAvailable,
 		bookingSelected: state.bookingSelectedIds.includes(t.id),
 	}))
-	page.renderFromTemplate('table-markers', items)
+	renderList(tableMarkersListContainer, items, 'table-markers', tableMarkersRecipe)
 
 	updateBookingSelection()
 }
@@ -610,12 +619,12 @@ let updateBookingSelection = () => {
 	let count = state.bookingSelectedIds.length
 	let tables = state.bookingSlotTables.filter(t => state.bookingSelectedIds.includes(t.id))
 	let totalCapacity = tables.reduce((sum, t) => sum + t.capacity, 0)
-	let partySize = parseInt($bookingParty.val())
+	let partySize = parseInt(bookingParty.value)
 
 	let pct = partySize > 0 ? Math.min((totalCapacity / partySize) * 100, 100) : 0
-	page.part('booking-capacity-fill').cssProp('--progress', pct)
+	$('@booking-capacity-fill', page).style.setProperty('--progress', pct)
 
-	let bar = page.part('booking-capacity-fill').get('parentElement')
+	let bar = $('@booking-capacity-fill', page).parentElement
 	delete bar.dataset.sufficient
 	delete bar.dataset.over
 	if (totalCapacity >= partySize && count > 0)
@@ -623,32 +632,32 @@ let updateBookingSelection = () => {
 	if (totalCapacity > partySize)
 		bar.dataset.over = ''
 
-	page.part('booking-msg-empty').shown(count == 0)
-	page.part('booking-msg-selected').shown(count > 0)
+	$('@booking-msg-empty', page).hidden = count != 0
+	$('@booking-msg-selected', page).hidden = count == 0
 	if (count > 0) {
-		page.part('booking-table-suffix').shown(count > 1)
-		page.part('booking-table-names').text(tables.map(t => t.name).join(', '))
-		page.part('booking-capacity-current').text(totalCapacity)
-		page.part('booking-capacity-needed').text(partySize)
+		$('@booking-table-suffix', page).hidden = count <= 1
+		$('@booking-table-names', page).textContent = tables.map(t => t.name).join(', ')
+		$('@booking-capacity-current', page).textContent = totalCapacity
+		$('@booking-capacity-needed', page).textContent = partySize
 	}
 
-	page.part('booking-confirm').disabled(count == 0)
+	$('@booking-confirm', page).disabled = count == 0
 }
 
 let confirmBooking = () => {
 	if (state.bookingSelectedIds.length == 0) return
 
-	if (isInPast($bookingDate.val(), $bookingTime.val())) {
+	if (isInPast(bookingDate.value, bookingTime.value)) {
 		showToast('Cannot create reservation in the past', 'error')
 		return
 	}
 
 	if (state.bookingMode == 'pending' && state.bookingPendingRes) {
 		let res = state.bookingPendingRes
-		let message = $bookingAdminMessage.val() || null
+		let message = bookingAdminMessage.value || null
 
 		// Update duration if changed
-		let newDuration = parseInt($bookingDuration.val())
+		let newDuration = parseInt(bookingDuration.value)
 		let durationPromise = newDuration != res.durationMinutes
 			? api.post('update-reservation', { pId: res.id, pDurationMinutes: newDuration })
 			: Promise.resolve()
@@ -666,15 +675,15 @@ let confirmBooking = () => {
 			loadPendingDates()
 		}).catch(() => showToast('Failed to confirm reservation', 'error'))
 	} else {
-		$guestForm.each(el => el.reset())
-		$guestDialog.modal()
+		guestForm.reset()
+		guestDialog.showModal()
 	}
 }
 
 let declineBooking = () => {
 	if (!state.bookingPendingRes) return
 
-	let message = $bookingAdminMessage.val() || null
+	let message = bookingAdminMessage.value || null
 	api.post('resolve-reservation', {
 		pId: state.bookingPendingRes.id,
 		pStatus: 'declined',
@@ -691,10 +700,10 @@ let createNewReservation = (guestData) => {
 		pGuestName: guestData.guestName,
 		pGuestPhone: guestData.guestPhone || null,
 		pGuestEmail: guestData.guestEmail || null,
-		pPartySize: parseInt($bookingParty.val()),
-		pReservationDate: $bookingDate.val(),
-		pReservationTime: $bookingTime.val(),
-		pDurationMinutes: parseInt($bookingDuration.val()),
+		pPartySize: parseInt(bookingParty.value),
+		pReservationDate: bookingDate.value,
+		pReservationTime: bookingTime.value,
+		pDurationMinutes: parseInt(bookingDuration.value),
 		pTableIds: state.bookingSelectedIds,
 		pSource: 'phone',
 		pNotes: guestData.notes || null
@@ -702,7 +711,7 @@ let createNewReservation = (guestData) => {
 
 	api.post('create-reservation', payload).then(result => {
 		if (!result.error) {
-			$guestDialog.modal(false)
+			guestDialog.close()
 			exitBookingMode()
 			loadDataForDate()
 			loadPendingDates()
@@ -710,71 +719,85 @@ let createNewReservation = (guestData) => {
 	}).catch(() => showToast('Failed to create reservation', 'error'))
 }
 
-$sidebarBooking.action({
-	back: () => exitBookingMode(),
-	decline: () => declineBooking(),
-	confirm: () => confirmBooking(),
-	time: () => loadSlotTables(),
-	duration: () => loadSlotTables(),
-	party: () => {
-		let partySize = parseInt($bookingParty.val())
-		$bookingDuration.val(getDefaultDuration(partySize))
+// Delegated action handler for sidebar-booking
+sidebarBooking.addEventListener('click', delegate('[data-action]', (ev, btn) => {
+	let action = btn.dataset.action
+	if (action == 'back') exitBookingMode()
+	else if (action == 'decline') declineBooking()
+	else if (action == 'confirm') confirmBooking()
+}))
+
+// Handle input/change events for booking params
+sidebarBooking.addEventListener('change', ev => {
+	let target = ev.target
+	let action = target.dataset.action
+
+	if (action == 'time' || action == 'duration') loadSlotTables()
+	else if (action == 'party') {
+		let partySize = parseInt(bookingParty.value)
+		bookingDuration.value = getDefaultDuration(partySize)
 		loadSlotTables()
-	},
+	}
 })
 
-$guestDialog.action({ close: () => $guestDialog.modal(false) })
-$guestForm.submit(data => createNewReservation(data))
+// Guest dialog actions
+guestDialog.addEventListener('click', delegate('[data-action="close"]', () => guestDialog.close()))
+
+guestForm.addEventListener('submit', ev => {
+	ev.preventDefault()
+	let data = Object.fromEntries(new FormData(guestForm))
+	createNewReservation(data)
+})
 
 // ── Reservation Dialog ──
 
 let openNewReservation = () => {
 	state.editingReservationId = null
-	$reservationDialog.data('mode', 'new')
-	$reservationDialog.data('msg', false)
-	$reservationForm.each(el => el.reset())
-	part('res-date').val(toDateStr(state.currentDate))
-	part('source-select').val('phone')
+	reservationDialog.dataset.mode = 'new'
+	delete reservationDialog.dataset.msg
+	reservationForm.reset()
+	$('@res-date').value = toDateStr(state.currentDate)
+	$('@source-select').value = 'phone'
 	loadTableOptions()
-	$reservationDialog.modal()
+	reservationDialog.showModal()
 }
 
 let openNewReservationForTable = (table) => {
 	state.editingReservationId = null
-	$reservationDialog.data('mode', 'new-table')
-	$reservationDialog.data('msg', false)
-	$dialogTableName.text(table.name)
-	$reservationForm.each(el => el.reset())
-	part('res-date').val(toDateStr(state.currentDate))
-	part('source-select').val('phone')
+	reservationDialog.dataset.mode = 'new-table'
+	delete reservationDialog.dataset.msg
+	dialogTableName.textContent = table.name
+	reservationForm.reset()
+	$('@res-date').value = toDateStr(state.currentDate)
+	$('@source-select').value = 'phone'
 	loadTableOptions().then(() => {
-		$tableSelect.val(table.id)
+		tableSelect.value = table.id
 	})
-	$reservationDialog.modal()
+	reservationDialog.showModal()
 }
 
 let openEditReservation = (res) => {
 	state.editingReservationId = res.id
-	$reservationDialog.data('mode', 'edit')
-	$reservationDialog.data('msg', false)
-	part('guest-name').val(res.guestName)
-	part('guest-phone').val(res.guestPhone || '')
-	part('guest-email').val(res.guestEmail || '')
-	part('party-size').val(res.partySize)
-	part('duration').val(res.durationMinutes)
-	part('res-date').val(res.reservationDate)
-	part('res-time').val(res.reservationTime)
-	part('source-select').val(res.source)
-	part('notes').val(res.notes || '')
+	reservationDialog.dataset.mode = 'edit'
+	delete reservationDialog.dataset.msg
+	$('@guest-name').value = res.guestName
+	$('@guest-phone').value = res.guestPhone || ''
+	$('@guest-email').value = res.guestEmail || ''
+	$('@party-size').value = res.partySize
+	$('@duration').value = res.durationMinutes
+	$('@res-date').value = res.reservationDate
+	$('@res-time').value = res.reservationTime
+	$('@source-select').value = res.source
+	$('@notes').value = res.notes || ''
 	loadTableOptions().then(() => {
-		$tableSelect.val(res.tableId || '')
+		tableSelect.value = res.tableId || ''
 	})
-	$reservationDialog.modal()
+	reservationDialog.showModal()
 }
 
 let loadTableOptions = () => {
 	return api.get('get-floorplans').then(floorplans => {
-		$tableSelect.each(el => el.innerHTML = '<option value="">No table assigned</option>')
+		tableSelect.innerHTML = '<option value="">No table assigned</option>'
 
 		return Promise.all(
 			floorplans.map(fp =>
@@ -791,20 +814,23 @@ let loadTableOptions = () => {
 					opt.textContent = `${t.name} (${t.capacity} seats)`
 					group.appendChild(opt)
 				})
-				$tableSelect.append(group)
+				tableSelect.appendChild(group)
 			})
 		})
 	})
 }
 
-$reservationDialog.action({ close: () => $reservationDialog.modal(false) })
+reservationDialog.addEventListener('click', delegate('[data-action="close"]', () => reservationDialog.close()))
 
-$reservationForm.submit(data => {
-	$reservationDialog.data('msg', false)
+reservationForm.addEventListener('submit', ev => {
+	ev.preventDefault()
+	let data = Object.fromEntries(new FormData(reservationForm))
+
+	delete reservationDialog.dataset.msg
 
 	if (isInPast(data.reservationDate, data.reservationTime)) {
-		$formErrorText.text('Cannot create reservation in the past')
-		$reservationDialog.data('msg', 'api')
+		formErrorText.textContent = 'Cannot create reservation in the past'
+		reservationDialog.dataset.msg = 'api'
 		return
 	}
 
@@ -831,23 +857,32 @@ $reservationForm.submit(data => {
 
 	action.then(result => {
 		if (result.error) {
-			$formErrorText.text(result.error.split(': ')[1] || result.error)
-			$reservationDialog.data('msg', 'api')
+			formErrorText.textContent = result.error.split(': ')[1] || result.error
+			reservationDialog.dataset.msg = 'api'
 		} else {
-			$reservationDialog.modal(false)
+			reservationDialog.close()
 			loadDataForDate()
 			loadPendingDates()
 		}
 	}).catch(() => {
-		$reservationDialog.data('msg', 'network')
+		reservationDialog.dataset.msg = 'network'
 	})
 })
 
 // ── Init ──
 
-dateSync.set(state.currentDate)
+// Initialize calendar
+initCalendar(calendar, state.currentDate)
 
-part('logout').on('click', () => {
+// Set up calendar change listener
+calendar.addEventListener('change', ev => {
+	syncDateFromCalendar(ev.detail.value)
+})
+
+// Set up booking date change listener
+bookingDate.addEventListener('change', syncDateFromInput)
+
+$('@logout').addEventListener('click', () => {
 	api.post('admin-logout').then(() => {
 		window.location.href = 'login.html'
 	})
@@ -856,7 +891,7 @@ part('logout').on('click', () => {
 api.get('get-restaurant').then(restaurant => {
 	if (restaurant?.name) {
 		document.title = `MyTable ${restaurant.name} Back Office`
-		part('page-title').text(restaurant.name)
+		$('@page-title').textContent = restaurant.name
 	}
 })
 

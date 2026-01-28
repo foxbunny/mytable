@@ -1,4 +1,4 @@
-import { api, part, registerTemplate } from './common.js'
+import { api, $, $$, renderList, showToast, delegate } from './common.js'
 
 let uploadFloorplanImage = (file) => {
 	let formData = new FormData()
@@ -23,51 +23,39 @@ let getImageDimensions = (file) => new Promise((resolve, reject) => {
 	img.src = url
 })
 
-let $statusLoading = part('status-loading')
-let $statusError = part('status-error')
-let $statusErrorDetail = part('status-error-detail')
-let content = part('content')
-let floorplanItemTemplate = part('floorplan-item')
-let tableEditorDialogTemplate = part('table-editor-dialog')
-let toastTpl = part('toast-template')
-let $toastList = document.getElementById('toast-list')
-
-let showToast = (message) => {
-	let toast = toastTpl.render()
-	toast.part('toast-message').text(message)
-	toast.part('toast-dismiss').on('click', () => {
-		toast.data('clear', '')
-		setTimeout(() => toast.remove(), 300)
-	})
-	toast.on('animationend', ev => {
-		if (ev.animationName == 'expire') {
-			toast.data('clear', '')
-			setTimeout(() => toast.remove(), 300)
-		}
-	})
-	toast.each(el => $toastList.appendChild(el))
-}
+let statusLoading = $('@status-loading')
+let statusError = $('@status-error')
+let statusErrorDetail = $('@status-error-detail')
+let contentTpl = $('@content')
+let floorplanItemTpl = $('@floorplan-item')
+let tableEditorDialogTpl = $('@table-editor-dialog')
 
 let floorplans = []
 let pendingFloorplan = null
 
-registerTemplate('table-markers', {
-	name: ($, v) => $.part('marker-label').text(v),
-	x: ($, v) => $.cssProp('--x', v),
-	y: ($, v) => $.cssProp('--y', v),
-	tableId: ($, v) => $.data('tableId', v),
-	selected: ($, v) => $.data('selected', v || false),
-})
+let tableMarkersRecipe = {
+	name: (el, v) => $('@marker-label', el).textContent = v,
+	x: (el, v) => el.style.setProperty('--x', v),
+	y: (el, v) => el.style.setProperty('--y', v),
+	tableId: (el, v) => el.dataset.tableId = v,
+	selected: (el, v) => el.toggleAttribute('data-selected', v),
+}
 
 let openTableEditor = (floorplan) => {
-	let editor = tableEditorDialogTemplate.render()
-	let canvasInner = editor.part('canvas-inner')
-	let floorImage = editor.part('floor-image')
-	let hint = editor.part('hint')
-	let tableProps = editor.part('table-props')
-	let propName = editor.part('prop-name')
-	let propCapacity = editor.part('prop-capacity')
-	let propNotes = editor.part('prop-notes')
+	let editor = tableEditorDialogTpl.content.cloneNode(true).firstElementChild
+	let canvasInner = $('@canvas-inner', editor)
+	let floorImage = $('@floor-image', editor)
+	let hint = $('@hint', editor)
+	let tableProps = $('@table-props', editor)
+	let propName = $('@prop-name', editor)
+	let propCapacity = $('@prop-capacity', editor)
+	let propNotes = $('@prop-notes', editor)
+	let markersContainer = editor.querySelector('slot[name="table-markers"]')
+
+	// Replace slot with a container div for renderList
+	let markersDiv = document.createElement('div')
+	markersDiv.className = 'table-markers-list'
+	markersContainer.replaceWith(markersDiv)
 
 	let tables = []
 	let selectedTableId = null
@@ -78,8 +66,8 @@ let openTableEditor = (floorplan) => {
 	let dragStartX = 0
 	let dragStartY = 0
 
-	editor.part('dialog-title-name').text(floorplan.name)
-	floorImage.src(floorplan.imagePath)
+	$('@dialog-title-name', editor).textContent = floorplan.name
+	floorImage.src = floorplan.imagePath
 
 	let renderMarkers = () => {
 		let items = tables.map(t => ({
@@ -90,27 +78,27 @@ let openTableEditor = (floorplan) => {
 			tableId: t.id,
 			selected: t.id == selectedTableId,
 		}))
-		editor.renderFromTemplate('table-markers', items)
+		renderList(markersDiv, items, 'table-markers', tableMarkersRecipe)
 	}
 
 	let selectTable = (id) => {
 		selectedTableId = id
 		let table = tables.find(t => t.id == id)
 		if (table) {
-			propName.val(table.name)
-			propCapacity.val(table.capacity)
-			propNotes.val(table.notes || '')
+			propName.value = table.name
+			propCapacity.value = table.capacity
+			propNotes.value = table.notes || ''
 		}
-		tableProps.shown(!!table)
-		hint.hidden(!!table)
+		tableProps.hidden = !table
+		hint.hidden = !!table
 		renderMarkers()
 	}
 
-	canvasInner.on('click', ev => {
+	canvasInner.addEventListener('click', ev => {
 		if (isDragging) return
 		if (ev.target.closest('.table-marker')) return
 
-		let rect = canvasInner.meth('getBoundingClientRect')
+		let rect = canvasInner.getBoundingClientRect()
 		let xPct = (ev.clientX - rect.left) / rect.width
 		let yPct = (ev.clientY - rect.top) / rect.height
 
@@ -133,7 +121,7 @@ let openTableEditor = (floorplan) => {
 		}).catch(() => showToast('Failed to add table'))
 	})
 
-	canvasInner.on('pointerdown', ev => {
+	canvasInner.addEventListener('pointerdown', ev => {
 		let marker = ev.target.closest('.table-marker')
 		if (!marker) return
 
@@ -158,7 +146,7 @@ let openTableEditor = (floorplan) => {
 		}
 
 		if (isDragging) {
-			let rect = canvasInner.meth('getBoundingClientRect')
+			let rect = canvasInner.getBoundingClientRect()
 			let xPct = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width))
 			let yPct = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height))
 			dragTarget.style.setProperty('--x', xPct * 100)
@@ -175,7 +163,7 @@ let openTableEditor = (floorplan) => {
 
 		if (isDragging) {
 			delete marker.dataset.dragging
-			let rect = canvasInner.meth('getBoundingClientRect')
+			let rect = canvasInner.getBoundingClientRect()
 			let xPct = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width))
 			let yPct = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height))
 
@@ -199,9 +187,9 @@ let openTableEditor = (floorplan) => {
 
 	let updateSelectedTable = () => {
 		if (!selectedTableId) return
-		let name = propName.val().trim()
-		let capacity = Number(propCapacity.val()) || 4
-		let notes = propNotes.val().trim() || null
+		let name = propName.value.trim()
+		let capacity = Number(propCapacity.value) || 4
+		let notes = propNotes.value.trim() || null
 
 		lastCapacity = capacity
 		lastNotes = notes
@@ -222,29 +210,37 @@ let openTableEditor = (floorplan) => {
 		}).catch(() => showToast('Failed to update table'))
 	}
 
-	editor.action({
-		'update-table': () => updateSelectedTable(),
-		'delete-table': () => {
+	// Delegated action handler
+	editor.addEventListener('click', delegate('[data-action]', (ev, btn) => {
+		let action = btn.dataset.action
+		if (action == 'update-table') {
+			updateSelectedTable()
+		} else if (action == 'delete-table') {
 			if (!selectedTableId) return
 			let id = selectedTableId
 			api.post('delete-floorplan-table', {pId: id}).then(() => {
 				tables = tables.filter(t => t.id != id)
 				selectTable(null)
 			}).catch(() => showToast('Failed to delete table'))
-		},
-		close: () => editor.modal(false),
-	})
-	editor.on('close', () => {
+		} else if (action == 'close') {
+			editor.close()
+		}
+	}))
+
+	// Handle input changes for update-table
+	editor.addEventListener('change', delegate('[data-action="update-table"]', updateSelectedTable))
+
+	editor.addEventListener('close', () => {
 		document.removeEventListener('pointermove', onPointerMove)
 		document.removeEventListener('pointerup', onPointerUp)
 		editor.remove()
 	})
 
-	editor.each(el => document.body.appendChild(el))
+	document.body.appendChild(editor)
 	api.get('get-floorplan-tables', {pFloorplanId: floorplan.id}).then(result => {
 		tables = result || []
 		renderMarkers()
-		editor.modal()
+		editor.showModal()
 	}).catch(() => showToast('Failed to load tables'))
 }
 
@@ -253,37 +249,36 @@ Promise.all([api.get('get-restaurant'), api.get('get-floorplans')])
 		let restaurant = restaurants[0] || null
 		floorplans = fps || []
 
-		let rendered = content.render()
-		content.replaceWith(rendered)
-		$statusLoading.hidden()
+		let rendered = contentTpl.content.cloneNode(true).firstElementChild
+		contentTpl.replaceWith(rendered)
+		statusLoading.hidden = true
 
-		let form = rendered.part('form')
-		let nameInput = rendered.part('name')
-		let addressInput = rendered.part('address')
-		let phoneInput = rendered.part('phone')
-		let $msgApiText = rendered.part('msg-api-text')
-		let submit = rendered.part('submit')
+		let form = $('@form', rendered)
+		let nameInput = $('@name', rendered)
+		let addressInput = $('@address', rendered)
+		let phoneInput = $('@phone', rendered)
+		let msgApiText = $('@msg-api-text', rendered)
+		let submit = $('@submit', rendered)
 
-		let floorplanList = rendered.part('floorplan-list')
-		let addFloorplanForm = rendered.part('add-floorplan-form')
-		let addFloorplanBtn = rendered.part('add-floorplan-btn')
-		let floorplanNameInput = rendered.part('floorplan-name')
-		let floorplanFileInput = rendered.part('floorplan-file')
-		let floorplanPreview = rendered.part('floorplan-preview')
-		let previewImage = rendered.part('preview-image')
-		let previewDimensions = rendered.part('preview-dimensions')
-		let cancelFloorplanBtn = rendered.part('cancel-floorplan')
-		let saveFloorplanBtn = rendered.part('save-floorplan')
+		let floorplanSection = rendered.querySelector('#floorplans-section')
+		let floorplanList = $('@floorplan-list', rendered)
+		let addFloorplanForm = $('@add-floorplan-form', rendered)
+		let floorplanNameInput = $('@floorplan-name', rendered)
+		let floorplanFileInput = $('@floorplan-file', rendered)
+		let floorplanPreview = $('@floorplan-preview', rendered)
+		let previewImage = $('@preview-image', rendered)
+		let previewDimensions = $('@preview-dimensions', rendered)
+		let saveFloorplanBtn = $('@save-floorplan', rendered)
 
 		if (restaurant) {
-			nameInput.val(restaurant.name || '')
-			addressInput.val(restaurant.address || '')
-			phoneInput.val(restaurant.phone || '')
+			nameInput.value = restaurant.name || ''
+			addressInput.value = restaurant.address || ''
+			phoneInput.value = restaurant.phone || ''
 
 			if (restaurant.workingHours) {
 				let days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 				days.forEach(day => {
-					let row = rendered.meth('querySelector', `[data-day="${day}"]`)
+					let row = rendered.querySelector(`[data-day="${day}"]`)
 					let checkbox = row.querySelector('[data-part="day-enabled"]')
 					let openInput = row.querySelector('[data-part="day-open"]')
 					let closeInput = row.querySelector('[data-part="day-close"]')
@@ -300,25 +295,19 @@ Promise.all([api.get('get-restaurant'), api.get('get-floorplans')])
 		}
 
 		let renderFloorplans = () => {
-			floorplanList.empty()
+			floorplanList.innerHTML = ''
 			floorplans.forEach(fp => {
-				let item = floorplanItemTemplate.render()
-				item.part('thumb').src(fp.imagePath)
-				item.part('fp-name').text(fp.name)
-				item.part('fp-dimensions').text(`${fp.imageWidth} x ${fp.imageHeight}px`)
-				item.part('edit-tables').on('click', () => openTableEditor(fp))
-				item.part('delete-fp').on('click', () => {
-					api.post('delete-floorplan', {pId: fp.id}).then(() => {
-						floorplans = floorplans.filter(f => f.id != fp.id)
-						renderFloorplans()
-					}).catch(() => showToast('Failed to delete floor plan'))
-				})
-				floorplanList.append(item)
+				let item = floorplanItemTpl.content.cloneNode(true).firstElementChild
+				item.dataset.fpId = fp.id
+				$('@thumb', item).src = fp.imagePath
+				$('@fp-name', item).textContent = fp.name
+				$('@fp-dimensions', item).textContent = `${fp.imageWidth} x ${fp.imageHeight}px`
+				floorplanList.appendChild(item)
 			})
 		}
 		renderFloorplans()
 
-		let dayRows = rendered.meth('querySelectorAll', '.day-row')
+		let dayRows = rendered.querySelectorAll('.day-row')
 		dayRows.forEach(row => {
 			let checkbox = row.querySelector('[data-part="day-enabled"]')
 			checkbox.addEventListener('change', () => {
@@ -330,59 +319,21 @@ Promise.all([api.get('get-restaurant'), api.get('get-floorplans')])
 		})
 
 		let resetFloorplanForm = () => {
-			floorplanNameInput.val('')
-			floorplanFileInput.val('')
-			previewImage.src('')
-			previewDimensions.text('')
-			floorplanPreview.shown()
-			saveFloorplanBtn.disabled()
+			floorplanNameInput.value = ''
+			floorplanFileInput.value = ''
+			previewImage.src = ''
+			previewDimensions.textContent = ''
+			floorplanPreview.hidden = false
+			saveFloorplanBtn.disabled = true
 			pendingFloorplan = null
 		}
 
-		addFloorplanBtn.on('click', () => {
-			addFloorplanForm.shown()
-			addFloorplanBtn.hidden()
-			floorplanNameInput.each(el => el.focus())
-		})
+		let saveFloorplan = () => {
+			if (!pendingFloorplan || !floorplanNameInput.value.trim()) return
 
-		cancelFloorplanBtn.on('click', () => {
-			addFloorplanForm.hidden()
-			addFloorplanBtn.shown()
-			resetFloorplanForm()
-		})
-
-		floorplanFileInput.on('change', () => {
-			let file = floorplanFileInput.get('files')[0]
-			if (!file) {
-				floorplanPreview.shown()
-				saveFloorplanBtn.disabled()
-				pendingFloorplan = null
-				return
-			}
-
-			getImageDimensions(file).then(dims => {
-				pendingFloorplan = {file, width: dims.width, height: dims.height}
-				previewImage.src(URL.createObjectURL(file))
-				previewDimensions.text(`${dims.width} x ${dims.height}px`)
-				floorplanPreview.hidden()
-				saveFloorplanBtn.disabled(!floorplanNameInput.val().trim())
-			}).catch(() => {
-				floorplanPreview.shown()
-				saveFloorplanBtn.disabled()
-				pendingFloorplan = null
-			})
-		})
-
-		floorplanNameInput.on('input', () => {
-			saveFloorplanBtn.disabled(!floorplanNameInput.val().trim() || !pendingFloorplan)
-		})
-
-		saveFloorplanBtn.on('click', () => {
-			if (!pendingFloorplan || !floorplanNameInput.val().trim()) return
-
-			let name = floorplanNameInput.val().trim()
-			saveFloorplanBtn.disabled()
-			saveFloorplanBtn.data('uploading', true)
+			let name = floorplanNameInput.value.trim()
+			saveFloorplanBtn.disabled = true
+			saveFloorplanBtn.dataset.uploading = true
 
 			uploadFloorplanImage(pendingFloorplan.file)
 				.then(uploadResult => api.post('save-floorplan', {
@@ -396,19 +347,72 @@ Promise.all([api.get('get-restaurant'), api.get('get-floorplans')])
 				.then(fps => {
 					floorplans = fps
 					renderFloorplans()
-					addFloorplanForm.hidden()
-					addFloorplanBtn.shown()
+					addFloorplanForm.hidden = true
 					resetFloorplanForm()
-					saveFloorplanBtn.data('uploading', false)
+					delete saveFloorplanBtn.dataset.uploading
 				})
 				.catch(() => {
-					saveFloorplanBtn.disabled(false)
-					saveFloorplanBtn.data('uploading', false)
+					saveFloorplanBtn.disabled = false
+					delete saveFloorplanBtn.dataset.uploading
 					showToast('Failed to save floor plan. Please try again.')
 				})
+		}
+
+		floorplanSection.addEventListener('click', delegate('[data-action]', (ev, btn) => {
+			let action = btn.dataset.action
+			if (action == 'add-floorplan') {
+				addFloorplanForm.hidden = false
+				btn.hidden = true
+				floorplanNameInput.focus()
+			} else if (action == 'cancel-floorplan') {
+				addFloorplanForm.hidden = true
+				floorplanSection.querySelector('[data-action="add-floorplan"]').hidden = false
+				resetFloorplanForm()
+			} else if (action == 'save-floorplan') {
+				saveFloorplan()
+			} else if (action == 'edit-tables') {
+				let fpId = Number(btn.closest('[data-fp-id]').dataset.fpId)
+				let fp = floorplans.find(f => f.id == fpId)
+				if (fp) openTableEditor(fp)
+			} else if (action == 'delete-fp') {
+				let fpId = Number(btn.closest('[data-fp-id]').dataset.fpId)
+				api.post('delete-floorplan', {pId: fpId}).then(() => {
+					floorplans = floorplans.filter(f => f.id != fpId)
+					renderFloorplans()
+				}).catch(() => showToast('Failed to delete floor plan'))
+			}
+		}))
+
+		floorplanFileInput.addEventListener('change', () => {
+			let file = floorplanFileInput.files[0]
+			if (!file) {
+				floorplanPreview.hidden = false
+				saveFloorplanBtn.disabled = true
+				pendingFloorplan = null
+				return
+			}
+
+			getImageDimensions(file).then(dims => {
+				pendingFloorplan = {file, width: dims.width, height: dims.height}
+				previewImage.src = URL.createObjectURL(file)
+				previewDimensions.textContent = `${dims.width} x ${dims.height}px`
+				floorplanPreview.hidden = true
+				saveFloorplanBtn.disabled = !floorplanNameInput.value.trim()
+			}).catch(() => {
+				floorplanPreview.hidden = false
+				saveFloorplanBtn.disabled = true
+				pendingFloorplan = null
+			})
 		})
 
-		form.submit(data => {
+		floorplanNameInput.addEventListener('input', () => {
+			saveFloorplanBtn.disabled = !floorplanNameInput.value.trim() || !pendingFloorplan
+		})
+
+		form.addEventListener('submit', ev => {
+			ev.preventDefault()
+			let data = Object.fromEntries(new FormData(form))
+
 			let workingHours = {}
 			dayRows.forEach(row => {
 				let day = row.dataset.day
@@ -423,34 +427,44 @@ Promise.all([api.get('get-restaurant'), api.get('get-floorplans')])
 				}
 			})
 
-			rendered.data('state', 'loading')
-			submit.disabled()
+			rendered.dataset.state = 'loading'
+			submit.disabled = true
 
-			api.post('save-restaurant', {
-				pName: data.name.trim(),
-				pAddress: data.address?.trim() || null,
-				pPhone: data.phone?.trim() || null,
-				pWorkingHours: workingHours,
-			}).then(result => {
-				if (result.error) {
-					$msgApiText.text(result.error.split(': ')[1] || result.error)
-					rendered.data('state', 'error-api')
-					submit.disabled(false)
-				} else {
-					rendered.data('state', 'success')
-					setTimeout(() => {
-						window.location.href = 'back-office.html'
-					}, 1500)
+			// Client-side validation: check if tables exist
+			api.get('has-tables').then(result => {
+				if (!result[0]?.hasTables) {
+					delete rendered.dataset.state
+					submit.disabled = false
+					showToast('Please add at least one table to a floor plan before completing setup.')
+					return
 				}
+
+				return api.post('save-restaurant', {
+					pName: data.name.trim(),
+					pAddress: data.address?.trim() || null,
+					pPhone: data.phone?.trim() || null,
+					pWorkingHours: workingHours,
+				}).then(result => {
+					if (result.error) {
+						msgApiText.textContent = result.error.split(': ')[1] || result.error
+						rendered.dataset.state = 'error-api'
+						submit.disabled = false
+					} else {
+						rendered.dataset.state = 'success'
+						setTimeout(() => {
+							window.location.href = 'back-office.html'
+						}, 1500)
+					}
+				})
 			}).catch(() => {
-				rendered.data('state', 'error-network')
-				submit.disabled(false)
+				rendered.dataset.state = 'error-network'
+				submit.disabled = false
 			})
 		})
 	})
 	.catch(err => {
 		console.error('Load error:', err)
-		$statusErrorDetail.text(err.message)
-		$statusLoading.hidden()
-		$statusError.shown()
+		statusErrorDetail.textContent = err.message
+		statusLoading.hidden = true
+		statusError.hidden = false
 	})

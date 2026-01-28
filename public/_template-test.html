@@ -16,24 +16,10 @@
 	<h1>Template Rendering Tests</h1>
 	<ul id="results"></ul>
 
-	<div id="test-area" data-part="test-area" hidden></div>
-
-	<!-- Content template with slots -->
-	<template data-part="page-content">
-		<section>
-			<h2>Reservations</h2>
-			<p><slot name="guest-count"></slot></p>
-			<ul><slot name="reservation-list"></slot></ul>
-		</section>
-	</template>
-
-	<!-- Variant templates for guest-count -->
-	<template data-name="guest-count" data-variant="one">
-		<span><span data-part="count"></span> guest</span>
-	</template>
-	<template data-name="guest-count" data-variant="other">
-		<span><span data-part="count"></span> guests</span>
-	</template>
+	<div id="test-area" data-part="test-area" hidden>
+		<h2>Reservations</h2>
+		<ul id="list-container"></ul>
+	</div>
 
 	<!-- List item template -->
 	<template data-name="reservation-list">

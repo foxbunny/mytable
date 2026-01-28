@@ -1,6 +1,6 @@
-import { extend, part, registerTemplate } from './common.js'
+import { $, renderList } from './common.js'
 
-let fragment = fetch('_calendar.html')
+let fragmentPromise = fetch('_calendar.html')
 	.then(r => r.text())
 	.then(html => {
 		let container = document.createElement('div')
@@ -9,15 +9,15 @@ let fragment = fetch('_calendar.html')
 			document.body.appendChild(tmpl)
 	})
 
-registerTemplate('calendar-day', {
-	[registerTemplate.key]: 'dateStr',
-	day: ($, v) => $.text(v),
-	dateStr: ($, v) => $.data('day', v),
-	other: ($, v) => $.data('other', v ? '' : null),
-	today: ($, v) => $.data('today', v ? '' : null),
-	selected: ($, v) => $.data('selected', v ? '' : null),
-	pending: ($, v) => $.data('pending', v ? '' : null),
-})
+let calendarDayRecipe = {
+	key: 'dateStr',
+	day: (el, v) => el.textContent = v,
+	dateStr: (el, v) => el.dataset.day = v,
+	other: (el, v) => { if (v) el.dataset.other = ''; else delete el.dataset.other },
+	today: (el, v) => { if (v) el.dataset.today = ''; else delete el.dataset.today },
+	selected: (el, v) => { if (v) el.dataset.selected = ''; else delete el.dataset.selected },
+	pending: (el, v) => { if (v) el.dataset.pending = ''; else delete el.dataset.pending },
+}
 
 let monthFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
 let weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
@@ -36,12 +36,8 @@ let getWeekdayLabels = () => {
 let toDateStr = d => d.toDateString()
 let todayStr = () => new Date().toDateString()
 
-extend('calendar', function (els, value) {
-	let el = els[0]
-	if (!el) return this
-
-	if (arguments.length == 1)
-		return new Date(el._calendarSelected)
+export let initCalendar = (el, value) => {
+	if (!el) return
 
 	if (!el._calendarInit) {
 		el._calendarInit = true
@@ -51,22 +47,28 @@ extend('calendar', function (els, value) {
 		el._calendarViewMonth = today.getMonth()
 		el._calendarPending = new Set()
 
-		fragment.then(() => {
-			let calParts = part('calendar-widget').render()
-			calParts.each(node => el.appendChild(node))
-			el._calendarParts = calParts
+		fragmentPromise.then(() => {
+			let calTpl = $('@calendar-widget')
+			let calWidget = calTpl.content.cloneNode(true).firstElementChild
+			el.appendChild(calWidget)
+			el._calendarWidget = calWidget
 
-			let weekdays = calParts.part('weekdays')
+			let weekdays = $('@weekdays', calWidget)
 			getWeekdayLabels().forEach(label => {
 				let span = document.createElement('span')
 				span.textContent = label
-				weekdays.append(span)
+				weekdays.appendChild(span)
 			})
 
-			calParts.part('prev').on('click', () => navigate(el, -1))
-			calParts.part('next').on('click', () => navigate(el, 1))
-			calParts.part('today').on('click', () => goToday(el))
-			calParts.part('days').on('click', ev => {
+			// Use days container directly (remove slot placeholder)
+			let daysContainer = $('@days', calWidget)
+			daysContainer.innerHTML = ''
+			el._calendarDaysContainer = daysContainer
+
+			$('@prev', calWidget).addEventListener('click', () => navigate(el, -1))
+			$('@next', calWidget).addEventListener('click', () => navigate(el, 1))
+			$('@today', calWidget).addEventListener('click', () => goToday(el))
+			daysContainer.addEventListener('click', ev => {
 				let btn = ev.target.closest('button')
 				if (btn) select(el, btn.dataset.day)
 			})
@@ -75,26 +77,28 @@ extend('calendar', function (els, value) {
 		})
 	}
 
-	let d = value instanceof Date ? value : new Date(value)
-	el._calendarSelected = toDateStr(d)
-	el._calendarViewYear = d.getFullYear()
-	el._calendarViewMonth = d.getMonth()
-	if (el._calendarParts) render(el)
+	if (value !== undefined) {
+		let d = value instanceof Date ? value : new Date(value)
+		el._calendarSelected = toDateStr(d)
+		el._calendarViewYear = d.getFullYear()
+		el._calendarViewMonth = d.getMonth()
+		if (el._calendarWidget) render(el)
+	}
+}
 
-	return this
-})
+export let getCalendarValue = (el) => {
+	if (!el || !el._calendarSelected) return null
+	return new Date(el._calendarSelected)
+}
 
-extend('calendarPending', function (els, dates) {
-	let el = els[0]
-	if (!el) return this
+export let setCalendarPending = (el, dates) => {
+	if (!el) return
 
 	el._calendarPending = new Set(
 		(dates || []).map(d => toDateStr(new Date(d + 'T00:00:00')))
 	)
-	if (el._calendarParts) render(el)
-
-	return this
-})
+	if (el._calendarWidget) render(el)
+}
 
 let navigate = (el, delta) => {
 	el._calendarViewMonth += delta
@@ -122,7 +126,7 @@ let select = (el, dateStr) => {
 }
 
 let render = el => {
-	let calParts = el._calendarParts
+	let calWidget = el._calendarWidget
 	let today = todayStr()
 	let year = el._calendarViewYear
 	let month = el._calendarViewMonth
@@ -176,6 +180,6 @@ let render = el => {
 		})
 	}
 
-	calParts.part('month-year').text(monthFmt.format(firstDay))
-	calParts.renderFromTemplate('calendar-day', days)
+	$('@month-year', calWidget).textContent = monthFmt.format(firstDay)
+	renderList(el._calendarDaysContainer, days, 'calendar-day', calendarDayRecipe)
 }

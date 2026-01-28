@@ -1,40 +1,41 @@
-import { part, registerTemplate } from './common.js'
+import { $, renderList } from './common.js'
 
 let N = 100
 let ITERS = 500
 
 // ── Reorder strategies ──
 
-let cursorReorder = (parent, start, end, newEntries, oldEntries) => {
+let cursorReorder = (parent, newEntries, oldEntries) => {
 	let oldMap = new Map(oldEntries.map(e => [e.key, e]))
 	for (let e of newEntries) oldMap.delete(e.key)
 	for (let e of oldMap.values()) e.node.remove()
 
-	let cursor = start.nextSibling
+	let cursor = parent.firstChild
 	for (let e of newEntries)
 		if (e.node != cursor)
 			parent.insertBefore(e.node, cursor)
 		else
-			cursor = cursor.nextSibling
+			cursor = cursor?.nextSibling
 }
 
-let afterReorder = (parent, start, end, newEntries, oldEntries) => {
+let afterReorder = (parent, newEntries, oldEntries) => {
 	let oldMap = new Map(oldEntries.map(e => [e.key, e]))
 	for (let e of newEntries) oldMap.delete(e.key)
 	for (let e of oldMap.values()) e.node.remove()
 
-	let lastInserted = start
+	let lastInserted = null
 	for (let e of newEntries) {
-		if (lastInserted.nextSibling != e.node)
-			lastInserted.after(e.node)
+		let nextSibling = lastInserted ? lastInserted.nextSibling : parent.firstChild
+		if (nextSibling != e.node)
+			parent.insertBefore(e.node, nextSibling)
 		lastInserted = e.node
 	}
 }
 
-// ── Template cloning (mirrors common.js logic) ──
+// ── Template cloning ──
 
 let cloneItem = (data) => {
-	let tmpl = document.querySelector('template[data-name="bench-list"]:not([data-variant])')
+	let tmpl = document.querySelector('template[data-name="bench-list"]')
 	let root = tmpl.content.cloneNode(true).firstElementChild
 	let parts = {}
 	for (let el of root.querySelectorAll('[data-part]'))
@@ -78,23 +79,16 @@ let countMoves = (fn) => {
 }
 
 let runScenario = (name, reorderFn, baseData, newDataFn) => {
-	// Setup: render initial list
 	let container = document.createElement('div')
 	document.body.appendChild(container)
-
-	let start = document.createComment('slot:bench-list')
-	let end = document.createComment('slot-end:bench-list')
-	container.appendChild(start)
-	container.appendChild(end)
 
 	let buildEntries = (data) => data.map(d => cloneItem(d))
 
 	let setupBase = () => {
-		while (start.nextSibling != end)
-			start.nextSibling.remove()
+		container.innerHTML = ''
 		let entries = buildEntries(baseData)
 		for (let e of entries)
-			container.insertBefore(e.node, end)
+			container.appendChild(e.node)
 		return entries
 	}
 
@@ -107,7 +101,7 @@ let runScenario = (name, reorderFn, baseData, newDataFn) => {
 		return cloneItem(d)
 	})
 	let moves = countMoves(() => {
-		reorderFn(container, start, end, newEntries, oldEntries)
+		reorderFn(container, newEntries, oldEntries)
 	})
 
 	// Measure time
@@ -121,7 +115,7 @@ let runScenario = (name, reorderFn, baseData, newDataFn) => {
 			return cloneItem(d)
 		})
 		let t0 = performance.now()
-		reorderFn(container, start, end, fresh, old)
+		reorderFn(container, fresh, old)
 		times.push(performance.now() - t0)
 	}
 

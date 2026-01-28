@@ -66,15 +66,15 @@
 							</div>
 
 							<div class="add-floorplan-actions">
-								<button type="button" class="sub" data-part="cancel-floorplan">Cancel</button>
-								<button type="button" data-part="save-floorplan" disabled>
+								<button type="button" class="sub" data-action="cancel-floorplan">Cancel</button>
+								<button type="button" data-part="save-floorplan" data-action="save-floorplan" disabled>
 								<span class="label-idle">Save Floor Plan</span>
 								<span class="label-busy">Uploading...</span>
 							</button>
 							</div>
 						</div>
 
-						<button type="button" class="sub" data-part="add-floorplan-btn">Add Floor Plan</button>
+						<button type="button" class="sub" data-action="add-floorplan">Add Floor Plan</button>
 					</fieldset>
 
 					<fieldset class="section" id="working-hours-section">
@@ -228,8 +228,8 @@
 					<span data-part="fp-name"></span>
 					<span class="label" data-part="fp-dimensions"></span>
 				</div>
-				<button type="button" class="sub" data-part="edit-tables">Edit Tables</button>
-				<button type="button" class="destructive icon" data-part="delete-fp"><span class="text-alt">Delete</span><x-icon name="close"></x-icon></button>
+				<button type="button" class="sub" data-action="edit-tables">Edit Tables</button>
+				<button type="button" class="destructive icon" data-action="delete-fp"><span class="text-alt">Delete</span><x-icon name="close"></x-icon></button>
 			</li>
 		</template>
 

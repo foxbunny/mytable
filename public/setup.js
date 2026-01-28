@@ -1,8 +1,8 @@
-import { api, part } from './common.js'
+import { api, $ } from './common.js'
 
-let $statusLoading = part('status-loading')
-let $statusError = part('status-error')
-let content = part('content')
+let statusLoading = $('@status-loading')
+let statusError = $('@status-error')
+let contentTpl = $('@content')
 
 api.get('is-setup').then(result => {
 	if (result.setup) {
@@ -10,50 +10,54 @@ api.get('is-setup').then(result => {
 		return
 	}
 
-	let rendered = content.render()
-	content.replaceWith(rendered)
-	$statusLoading.hidden()
+	let rendered = contentTpl.content.cloneNode(true).firstElementChild
+	contentTpl.replaceWith(rendered)
+	statusLoading.hidden = true
 
-	let form = rendered.part('form')
-	let passwordInput = rendered.part('password')
-	let confirmInput = rendered.part('confirm')
-	let $msgApiText = rendered.part('msg-api-text')
-	let submit = rendered.part('submit')
+	let form = $('@form', rendered)
+	let passwordInput = $('@password', rendered)
+	let confirmInput = $('@confirm', rendered)
+	let msgApiText = $('@msg-api-text', rendered)
+	let submit = $('@submit', rendered)
 
-	let validateConfirm = () => confirmInput.validate(v =>
-		v != passwordInput.val() ? 'Passwords do not match' : undefined
-	)
+	let validateConfirm = () => {
+		let msg = confirmInput.value != passwordInput.value ? 'Passwords do not match' : ''
+		confirmInput.setCustomValidity(msg)
+	}
 
-	confirmInput.on('input', validateConfirm)
-	passwordInput.on('input', validateConfirm)
+	confirmInput.addEventListener('input', validateConfirm)
+	passwordInput.addEventListener('input', validateConfirm)
 
-	form.submit(data => {
+	form.addEventListener('submit', ev => {
+		ev.preventDefault()
+		let data = Object.fromEntries(new FormData(form))
+
 		validateConfirm()
-		if (!form.meth('reportValidity')) return
+		if (!form.reportValidity()) return
 
-		rendered.data('state', 'loading')
-		submit.disabled()
+		rendered.dataset.state = 'loading'
+		submit.disabled = true
 
 		api.post('setup-admin', {
 			pUsername: data.username.trim(),
 			pPassword: data.password
 		}).then(result => {
 			if (result.error) {
-				$msgApiText.text(result.error.split(': ')[1] || result.error)
-				rendered.data('state', 'error-api')
-				submit.disabled(false)
+				msgApiText.textContent = result.error.split(': ')[1] || result.error
+				rendered.dataset.state = 'error-api'
+				submit.disabled = false
 			} else {
-				rendered.data('state', 'success')
+				rendered.dataset.state = 'success'
 				setTimeout(() => {
 					window.location.href = 'login.html'
 				}, 1500)
 			}
 		}).catch(() => {
-			rendered.data('state', 'error-network')
-			submit.disabled(false)
+			rendered.dataset.state = 'error-network'
+			submit.disabled = false
 		})
 	})
 }).catch(() => {
-	$statusLoading.hidden()
-	$statusError.shown()
+	statusLoading.hidden = true
+	statusError.hidden = false
 })

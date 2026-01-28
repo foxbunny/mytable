@@ -1,18 +1,21 @@
-import { part } from './common.js'
+import { $ } from './common.js'
 
-let status = part('status')
-let content = part('content')
+let status = $('@status')
+let contentTpl = $('@content')
 
-let rendered = content.render()
-content.replaceWith(rendered)
-status.hidden()
+let rendered = contentTpl.content.cloneNode(true).firstElementChild
+contentTpl.replaceWith(rendered)
+status.hidden = true
 
-let form = rendered.part('form')
-let submit = rendered.part('submit')
+let form = $('@form', rendered)
+let submit = $('@submit', rendered)
 
-form.submit(data => {
-	rendered.data('state', 'loading')
-	submit.disabled()
+form.addEventListener('submit', ev => {
+	ev.preventDefault()
+	let data = Object.fromEntries(new FormData(form))
+
+	rendered.dataset.state = 'loading'
+	submit.disabled = true
 
 	fetch('/api/admin-login', {
 		method: 'POST',
@@ -22,11 +25,11 @@ form.submit(data => {
 		if (r.ok) {
 			window.location.replace('back-office.html')
 		} else {
-			rendered.data('state', 'error-credentials')
-			submit.disabled(false)
+			rendered.dataset.state = 'error-credentials'
+			submit.disabled = false
 		}
 	}).catch(() => {
-		rendered.data('state', 'error-network')
-		submit.disabled(false)
+		rendered.dataset.state = 'error-network'
+		submit.disabled = false
 	})
 })

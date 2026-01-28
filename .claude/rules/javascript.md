@@ -54,86 +54,86 @@ Declare all variables using only `let`. No `const`.
 
 ## DOM manipulation
 
-Use the lightweight jQuery clone located in public/common.js.
+Use the utilities in public/common.js: `$` and `$$` for element selection, `api` for fetch calls, `renderList` for list reconciliation, and `showToast` for notifications.
 
-When you are about to do low-level DOM manipulation directly on elements, first think whether this is an opportunity to enahnce the partsProto with new features. The criterion is that the feature is generic enough, and high-level enough (e.g., not something that is normally trivial to do with direct DOM manipulation), and that there's a value-add when we are able to perform it across all selected elements at once (i.e., it's not typically something we do with single elements).
+Prefer declarative patterns over imperative logic. For example, use `el.toggleAttribute('data-selected', isSelected)` instead of `if (isSelected) el.dataset.selected = ''; else delete el.dataset.selected`.
 
-The API design should be such that it can always be used declaratively whenever that makes sense. For instance, instead of having disable() and enable(), we have toggleDisable(true), toggleDisable(false). This allows us to data-drive the operations.
+## Template rendering
 
-## Template rendering with slots
-
-Pages wrap their content in a `<template data-part="content">` and render it on init. This creates slots (comment markers) and builds a part index for efficient element access.
+Pages wrap their content in a `<template data-part="content">` and render it on init:
 
 ```javascript
-import { part, registerTemplate } from './common.js'
+import { $, renderList } from './common.js'
 
-// Register recipes for slot templates
-registerTemplate('reservation-list', {
-	[registerTemplate.create]: ($) => {
-		$.on('click', () => { ... })
-		$.on('mouseenter', () => { ... })
-	},
-	name: ($, v) => $.part('name').text(v),
-	time: ($, v) => $.part('time').text(v),
-})
+let contentTpl = $('@content')
+let page = contentTpl.content.cloneNode(true).firstElementChild
+contentTpl.replaceWith(page)
 
-// Render the page template (processes slots, indexes parts)
-let page = part('content').render()
-part('content').replaceWith(page)
-
-// Access parts via the rendered instance
-let $sidebar = page.part('sidebar')
-
-// Render lists into slots
-page.renderFromTemplate('reservation-list', reservations)
-
-// Variant rendering (e.g., pluralization)
-page.renderPluralized('guest-count', count, { count })
+// Access elements within the rendered page
+let sidebar = $('@sidebar', page)
 ```
+
+### List rendering with `renderList`
+
+Use `renderList(container, items, templateId, recipe)` for dynamic lists with efficient reconciliation:
+
+```javascript
+let reservationListRecipe = {
+	create: (el) => {
+		el.addEventListener('click', () => handleClick(el.dataset.reservationId))
+	},
+	time: (el, v) => $('@res-time', el).textContent = v,
+	guest: (el, v) => $('@res-guest', el).textContent = v,
+	reservationId: (el, v) => el.dataset.reservationId = v,
+	urgent: (el, v) => el.toggleAttribute('data-urgent', v),
+}
+
+renderList(listContainer, reservations, 'reservation-list', reservationListRecipe)
+```
+
+The `create` function runs once when an item is first created. Other recipe keys run when their corresponding data value changes.
 
 ### Recipes
 
-A recipe maps data keys to updater functions. Each updater receives the item's parts API and the value:
+A recipe maps data keys to updater functions. Each updater receives the element and the value. Prefer declarative one-liners over imperative logic:
 
 ```javascript
-registerTemplate('table-marker', {
-	name: ($, v) => $.part('marker-name').text(v),
-	x: ($, v) => $.cssProp('--x', v),
-	y: ($, v) => $.cssProp('--y', v),
-})
+let tableMarkersRecipe = {
+	// Text content
+	name: (el, v) => $('@marker-name', el).textContent = v,
+
+	// CSS custom properties for positioning/sizing
+	x: (el, v) => el.style.setProperty('--x', v),
+	y: (el, v) => el.style.setProperty('--y', v),
+
+	// Data attributes for values
+	tableId: (el, v) => el.dataset.tableId = v,
+
+	// Boolean attributes via toggleAttribute
+	blocked: (el, v) => el.toggleAttribute('data-blocked', v),
+	selected: (el, v) => el.toggleAttribute('data-selected', v),
+	occupied: (el, v) => el.toggleAttribute('data-occupied', v),
+}
 ```
+
+Use `toggleAttribute('data-foo', bool)` for boolean states — it's cleaner than `if (v) el.dataset.foo = ''; else delete el.dataset.foo`.
 
 On updates, only changed fields trigger their updater.
 
 ### Key detection
 
-For list reconciliation, the system auto-detects the identity field by trying `id`, `_id`, `key`, `_key` on the first item. For non-standard key names, use the symbol:
+For list reconciliation, the system auto-detects the identity field by trying `id`, `_id`, `key`, `_key` on the first item. For non-standard key names, set `key` in the recipe:
 
 ```javascript
-registerTemplate('custom-list', {
-	[registerTemplate.key]: 'entityId',
-	name: ($, v) => $.part('name').text(v),
-})
-```
-
-### Create hook
-
-The `registerTemplate.create` symbol registers an initialization function called once per item when first cloned. Use it for event handlers:
-
-```javascript
-registerTemplate('item-list', {
-	[registerTemplate.create]: ($) => {
-		$.on('click', () => handleClick($.data('itemId')))
-		$.on('mouseenter', () => highlight(true))
-		$.on('mouseleave', () => highlight(false))
-	},
-	name: ($, v) => $.part('name').text(v),
-})
+let recipe = {
+	key: 'entityId',
+	name: (el, v) => $('@name', el).textContent = v,
+}
 ```
 
 ### List reconciliation
 
-When `renderFromTemplate` receives an array, it reconciles by key: new items are created, removed items are deleted, existing items are diffed. DOM reordering minimizes moves — nodes already in position are left untouched.
+`renderList` reconciles by key: new items are created, removed items are deleted, existing items are diffed. DOM reordering minimizes moves — nodes already in position are left untouched.
 
 ## Inline assertions
 
@@ -184,17 +184,17 @@ This keeps the JavaScript minimal (just setting an attribute value) and lets CSS
 
 **Never place static text content in JavaScript.** All user-facing text belongs in HTML. JavaScript only injects **raw data values** — things that come from the database or user input (names, numbers, dates).
 
-The test: if a translator could translate it, it belongs in HTML. If it's a raw value from the system, `.text()` is fine.
+The test: if a translator could translate it, it belongs in HTML. If it's a raw value from the system, `textContent` is fine.
 
-**`.text()` is acceptable for:**
-- Names from the database: `$guestName.text(res.guestName)`
-- Formatted numbers: `$capacity.text(totalSeats)`
-- Computed values: `$endTime.text(addMinutes(time, duration))`
+**`textContent` is acceptable for:**
+- Names from the database: `guestNameEl.textContent = res.guestName`
+- Formatted numbers: `capacityEl.textContent = totalSeats`
+- Computed values: `endTimeEl.textContent = addMinutes(time, duration)`
 
-**`.text()` is NOT acceptable for:**
-- Labels: `$btn.text('Save')` — put the word in HTML
-- Status text: `$status.text('Loading...')` — use state switching
-- Constructed sentences: `` $msg.text(`${n} guests`) `` — put structure in HTML, inject only the number
+**`textContent` is NOT acceptable for:**
+- Labels: `btn.textContent = 'Save'` — put the word in HTML
+- Status text: `status.textContent = 'Loading...'` — use state switching
+- Constructed sentences: `` msg.textContent = `${n} guests` `` — put structure in HTML, inject only the number
 
 ### Switching between text alternatives
 
@@ -213,7 +213,7 @@ When a UI element shows different text based on state, all alternatives live in 
 ```
 
 ```javascript
-$container.data('mode', 'new')
+container.dataset.mode = 'new'
 ```
 
 ### Structured messages with data placeholders
@@ -231,11 +231,11 @@ When a message mixes static text with dynamic values, the static parts are HTML 
 ```
 
 ```javascript
-$msgSelected.toggle(count > 0)
-$tableSuffix.toggle(count > 1)
-$tableNames.text(names)
-$capacityCurrent.text(capacity)
-$capacityNeeded.text(needed)
+msgSelected.hidden = count == 0
+tableSuffix.hidden = count <= 1
+tableNames.textContent = names
+capacityCurrent.textContent = capacity
+capacityNeeded.textContent = needed
 ```
 
 ### Button loading states
@@ -256,8 +256,8 @@ Buttons that show different text during async operations use two child spans and
 ```
 
 ```javascript
-$container.data('state', 'loading')
-$submit.toggleDisable(true)
+container.dataset.state = 'loading'
+submit.disabled = true
 ```
 
 ### Form error messages
@@ -281,14 +281,14 @@ Forms that can show different error types use child spans with classes, controll
 
 ```javascript
 // Network error — no dynamic text needed
-$container.data('state', 'error-network')
+container.dataset.state = 'error-network'
 
 // API error — inject the error string as a data value
-$errorText.text(result.error)
-$container.data('state', 'error-api')
+errorText.textContent = result.error
+container.dataset.state = 'error-api'
 
 // Clear
-$container.data('state', false)
+delete container.dataset.state
 ```
 
 ## Styling via CSS custom properties
@@ -303,12 +303,12 @@ el.style.width = renderW + 'px'
 el.style.height = renderH + 'px'
 ```
 
-**Good: Set custom properties via `cssProp`, CSS applies styles**
+**Good: Set custom properties, CSS applies styles**
 ```javascript
-$el.cssProp('--x', offsetX)
-$el.cssProp('--y', offsetY)
-$el.cssProp('--w', renderW)
-$el.cssProp('--h', renderH)
+el.style.setProperty('--x', offsetX)
+el.style.setProperty('--y', offsetY)
+el.style.setProperty('--w', renderW)
+el.style.setProperty('--h', renderH)
 ```
 
 ```css
@@ -325,111 +325,63 @@ This pattern:
 - Makes it easy to add transitions, transforms, or other CSS features
 - JavaScript only provides data values, CSS decides how to use them
 
-## Declarative state methods
+## Declarative state patterns
 
-Methods `shown()`, `hidden()`, `disabled()`, `modal()`, and `data()` are state-specifying: each call is a declarative assertion about what the element's state should be. The method name is the state (adjective), and the argument determines whether to apply it.
-
-### Pass conditions as arguments, not as control flow
+Prefer declarative assignments over imperative if/else:
 
 ```javascript
 // Bad: imperative dispatch
-if (hasNotes) $notes.shown()
-else $notes.hidden()
+if (hasNotes) notesEl.hidden = false
+else notesEl.hidden = true
 
-// Good: declarative state assertion
-$notes.shown(!!hasNotes)
+// Good: declarative assignment
+notesEl.hidden = !hasNotes
 ```
 
-### Pick the method that avoids negation
+For boolean data attributes, use `toggleAttribute`:
+
+```javascript
+// Bad: imperative
+if (isBlocked) el.dataset.blocked = ''
+else delete el.dataset.blocked
+
+// Good: declarative
+el.toggleAttribute('data-blocked', isBlocked)
+```
+
+### Pick the property that avoids negation
 
 ```javascript
 let empty = items.length == 0
-$list.hidden(empty)          // not: $list.shown(!empty)
-$emptyMsg.shown(empty)
+listEl.hidden = empty
+emptyMsg.hidden = !empty
 ```
 
-### Separate data-injection from state-specification
+## Delegated event handlers
 
-```javascript
-if (data.notes) $notesText.text(data.notes)
-$notesRow.shown(!!data.notes)
-```
-
-### No-arg form means "unconditionally assert this state"
-
-```javascript
-$loading.hidden()            // unconditionally hidden
-$error.shown()               // unconditionally shown
-$submit.disabled()           // unconditionally disabled
-```
-
-### Exception: setup blocks
-
-When a state call is part of a block that also configures the element's content, it may remain inside the conditional — provided the reset path already asserts the opposite state unconditionally.
-
-## Delegated actions via `action()`
-
-Use `action()` to consolidate button clicks and input/select changes within a container. Instead of binding individual handlers to each element, declare a handler map on the container and let the system dispatch by action name.
-
-### How it works
-
-1. Call `action(handlers)` on a container's partsAPI
-2. The system sets up delegated listeners for `click`, `change`, and `input`
-3. When an event fires, it finds the closest matching element and resolves an action name via: `data-action` → `value` → `name` (first truthy wins)
-4. If a handler exists for that name, it's called with `($target, ev)`
-
-### HTML: mark elements with `data-action`
-
-Buttons use `data-action` (or `value` for buttons whose value already serves as an identifier). Inputs/selects use `data-action` or `name`.
+Use event delegation to consolidate button clicks within a container. Mark elements with `data-action` and handle them in a single listener:
 
 ```html
-<aside data-part="sidebar" data-mode="detail">
+<aside data-part="sidebar">
 	<button data-action="back">Back</button>
-	<button data-action="completed">Complete</button>
-	<button data-action="cancelled">Cancel</button>
-	<input type="time" data-part="booking-time" data-action="time">
-	<select data-part="duration" data-action="duration">...</select>
+	<button data-action="confirm">Confirm</button>
+	<button data-action="cancel">Cancel</button>
 </aside>
 ```
 
-### JavaScript: declare handlers on the container
-
 ```javascript
-$sidebar.action({
-	back: () => exitDetailView(),
-	completed: () => updateReservationStatus('completed'),
-	cancelled: () => updateReservationStatus('cancelled'),
-	time: () => loadSlotTables(),
-	duration: () => loadSlotTables(),
+sidebar.addEventListener('click', ev => {
+	let btn = ev.target.closest('[data-action]')
+	if (!btn) return
+	let action = btn.dataset.action
+
+	if (action == 'back') exitDetailView()
+	else if (action == 'confirm') confirmBooking()
+	else if (action == 'cancel') cancelBooking()
 })
 ```
 
-### When to use `action()` vs `.on()`
-
-- **Use `action()`** when a container has multiple buttons/inputs that represent discrete operations — especially dialogs, toolbars, and panels
-- **Use `.on()`** for single-element handlers, non-delegatable events (mouseenter, pointerdown), or when the handler needs the partsAPI of the listener element itself
-
-### Additive calls
-
-Multiple `action()` calls on the same container merge handlers:
-
-```javascript
-$panel.action({ save: () => save() })
-// Later...
-$panel.action({ delete: () => remove() })
-// Both 'save' and 'delete' are now active
-```
-
-### Shared action names for same handler
-
-Multiple elements can share the same `data-action` value to trigger a single handler:
-
-```html
-<button class="close" data-action="close">×</button>
-<!-- ... -->
-<button data-action="close">Cancel</button>
-```
-
-```javascript
-$dialog.action({ close: () => $dialog.modal(false) })
-```
+This pattern:
+- Reduces the number of event listeners
+- Makes it easy to add new actions
+- Keeps action handling in one place
