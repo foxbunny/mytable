@@ -1,4 +1,26 @@
 {
+  "ResponseCompression": {
+    "Enabled": true,
+    "EnableForHttps": true,
+    "UseBrotli": true,
+    "UseGzipFallback": true,
+    "CompressionLevel": "Optimal",
+    "IncludeMimeTypes": [
+      "text/plain",
+      "text/css",
+      "application/javascript",
+      "text/html",
+      "application/xml",
+      "text/xml",
+      "application/json",
+      "text/json",
+      "image/svg+xml",
+      "font/woff",
+      "font/woff2",
+      "application/font-woff",
+      "application/font-woff2"
+    ]
+  },
   "RateLimiterOptions": {
     "Enabled": true,
     "StatusCode": 429,
